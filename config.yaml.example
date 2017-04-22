@@ -9,5 +9,4 @@ discourse_cert:
 category_access:
  - admins
 category_color: ED207B
-category_filter: team-
 category_text_color: FFFFFF

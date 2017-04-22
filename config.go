@@ -17,7 +17,6 @@ type config struct {
 	DiscourseAPIUser string `yaml:"discourse_api_user"`
 
 	CategoryAccess    []string `yaml:"category_access"`
-	CategoryFilter    string   `yaml:"category_filter"`
 	CategoryColor     string   `yaml:"category_color"`
 	CategoryTextColor string   `yaml:"category_text_color"`
 }

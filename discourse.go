@@ -15,10 +15,10 @@ type discourseUser struct {
 }
 
 type discourseCategoryPost struct {
-	Name        string            `json:"name"`
+	Name string `json:"name"`
 
-	Color       string            `json:"color"`
-	TextColor   string            `json:"text_color"`
+	Color     string `json:"color"`
+	TextColor string `json:"text_color"`
 
 	Permissions map[string]string `json:"permissions"`
 }
@@ -132,27 +132,25 @@ func (s *syncer) discourseCreateCategory(name string, groups []string) error {
 }
 
 // User setup
-func (s *syncer) discourseSetupUser(user discourseUser, groups []string) error {
+func (s *syncer) discourseSetupUser(user discourseUser, group string) error {
 	// Setup the groups
-	for _, group := range groups {
-		adminGroup, err := s.discourseGetGroup(group)
-		if err != nil {
-			return fmt.Errorf("User group doesn't exist: %s", group)
-		}
+	adminGroup, err := s.discourseGetGroup(group)
+	if err != nil {
+		return fmt.Errorf("User group doesn't exist: %s", group)
+	}
 
-		// Add the user to the group
-		member := map[string]string{
-			"usernames": user.Username,
-		}
+	// Add the user to the group
+	member := map[string]string{
+		"usernames": user.Username,
+	}
 
-		err = s.queryStruct("discourse", "PUT", fmt.Sprintf("/groups/%d/members", adminGroup.ID), member, nil)
-		if err != nil {
-			return err
-		}
+	err = s.queryStruct("discourse", "PUT", fmt.Sprintf("/groups/%d/members", adminGroup.ID), member, nil)
+	if err != nil {
+		return err
 	}
 
 	// Approve the user
-	err := s.queryStruct("discourse", "PUT", fmt.Sprintf("/admin/users/%d/approve", user.ID), nil, nil)
+	err = s.queryStruct("discourse", "PUT", fmt.Sprintf("/admin/users/%d/approve", user.ID), nil, nil)
 	if err != nil {
 		return err
 	}
@@ -193,11 +191,8 @@ func (s *syncer) discourseProcessNewUsers() error {
 			continue
 		}
 
-		// Extract the discourse groups if any
-		groups := strings.Split(team.Tags["discourse"], ";")
-
 		// Activate the user
-		err = s.discourseSetupUser(*adminUser, groups)
+		err = s.discourseSetupUser(*adminUser, team.Tags["discourse"])
 		if err != nil {
 			s.logger.Error("Failed to setup new user", log15.Ctx{"user": adminUser.Username, "error": err})
 			continue
@@ -238,7 +233,7 @@ func (s *syncer) discourseCreateTeams() error {
 			}
 
 			// Create the category if missing
-			if strings.HasPrefix(group, s.config.CategoryFilter) && !s.discourseCategoryExists(group) {
+			if !s.discourseCategoryExists(group) {
 				err = s.discourseCreateCategory(group, []string{group})
 				if err != nil {
 					return err
