@@ -16,8 +16,10 @@ type discourseUser struct {
 
 type discourseCategoryPost struct {
 	Name        string            `json:"name"`
+
 	Color       string            `json:"color"`
 	TextColor   string            `json:"text_color"`
+
 	Permissions map[string]string `json:"permissions"`
 }
 
@@ -28,6 +30,7 @@ type discourseGroup struct {
 
 type discourseGroupPost struct {
 	Name         string `json:"name"`
+	FullName     string `json:"full_name"`
 	PrimaryGroup string `json:"primary_group"`
 	Title        string `json:"title"`
 }
@@ -80,10 +83,11 @@ func (s *syncer) discourseGroupExists(name string) bool {
 	return true
 }
 
-func (s *syncer) discourseCreateGroup(name string) error {
+func (s *syncer) discourseCreateGroup(name string, fullName string) error {
 	group := discourseGroupPost{
 		Name:         name,
-		Title:        fmt.Sprintf("Member of %s", name),
+		FullName:     fullName,
+		Title:        fmt.Sprintf("Member of team: %s", fullName),
 		PrimaryGroup: "true",
 	}
 
@@ -225,7 +229,7 @@ func (s *syncer) discourseCreateTeams() error {
 
 			// Create the group if missing
 			if !s.discourseGroupExists(group) {
-				err = s.discourseCreateGroup(group)
+				err = s.discourseCreateGroup(group, team.Name)
 				if err != nil {
 					return err
 				}
