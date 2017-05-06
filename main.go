@@ -13,25 +13,7 @@ func main() {
 	app.HideVersion = true
 	app.HideHelp = true
 	app.EnableBashCompletion = true
-
-	app.Commands = []cli.Command{
-		{
-			Name:   "daemon",
-			Usage:  "Process events as they arrive",
-			Action: cmdDaemon,
-		},
-		{
-			Name:   "sync",
-			Usage:  "Get the current state and sync everything",
-			Action: cmdSync,
-		},
-		{
-			Name:      "trigger",
-			Usage:     "Manually trigger a post",
-			ArgsUsage: "<post name>",
-			Action:    cmdTrigger,
-		},
-	}
-
+	app.Action = cmdDaemon
+	app.Usage = "Starts a daemon that processes events as they arrive"
 	app.Run(os.Args)
 }

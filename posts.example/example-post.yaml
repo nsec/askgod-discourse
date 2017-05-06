@@ -1,0 +1,10 @@
+type: post
+topic: example-topic
+trigger:
+  type: flag
+  tag: flag01
+
+body: |-
+  Congratulations on scoring %{flag_value}!
+
+  We're told that there may be more flags hidding though, look a bit closer.

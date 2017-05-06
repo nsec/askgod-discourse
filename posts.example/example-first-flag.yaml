@@ -1,0 +1,10 @@
+type: topic
+trigger:
+  type: flag
+
+title: Congratulations on your first flag!
+body: |-
+  Congratulations!
+  You have just scored your first %{flag_value} points!
+
+  Be that the first of many more flags for your team!

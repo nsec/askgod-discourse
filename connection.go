@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/gorilla/websocket"
 )
 
 func (s *syncer) getClient(server string, serverCert string) (*http.Client, error) {
@@ -74,6 +76,44 @@ func (s *syncer) getClient(server string, serverCert string) (*http.Client, erro
 	}
 
 	return &client, nil
+}
+
+func (s *syncer) websocket(server string, path string) (*websocket.Conn, error) {
+	// Server-specific configuration
+	var srv *http.Client
+	var url string
+	if server == "askgod" {
+		srv = s.httpAskgod
+		url = fmt.Sprintf("%s/1.0%s", s.config.AskgodURL, path)
+	} else if server == "discourse" {
+		srv = s.httpDiscourse
+		url = fmt.Sprintf("%s%s?api_key=%s&api_username=%s", s.config.DiscourseURL, path, s.config.DiscourseAPIKey, s.config.DiscourseAPIUser)
+	} else {
+		return nil, fmt.Errorf("Unknown server: %s", server)
+	}
+
+	if strings.HasPrefix(url, "https://") {
+		url = fmt.Sprintf("wss://%s", strings.TrimPrefix(url, "https://"))
+	} else {
+		url = fmt.Sprintf("ws://%s", strings.TrimPrefix(url, "http://"))
+	}
+
+	// Grab the http transport handler
+	httpTransport := srv.Transport.(*http.Transport)
+
+	// Setup a new websocket dialer based on it
+	dialer := websocket.Dialer{
+		TLSClientConfig: httpTransport.TLSClientConfig,
+		Proxy:           httpTransport.Proxy,
+	}
+
+	// Establish the connection
+	conn, _, err := dialer.Dial(url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, err
 }
 
 func (s *syncer) queryStruct(server string, method string, path string, data interface{}, target interface{}) error {
