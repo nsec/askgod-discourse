@@ -11,6 +11,8 @@ type config struct {
 	AskgodURL  string `yaml:"askgod_url"`
 	AskgodCert string `yaml:"askgod_cert"`
 
+	Database string `yaml:"database"`
+
 	DiscourseURL     string `yaml:"discourse_url"`
 	DiscourseCert    string `yaml:"discourse_cert"`
 	DiscourseAPIKey  string `yaml:"discourse_api_key"`

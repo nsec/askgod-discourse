@@ -11,6 +11,12 @@ func cmdDaemon(ctx *cli.Context) error {
 		return err
 	}
 
+	// Connect to the DB
+	err = s.dbSetup()
+	if err != nil {
+		return err
+	}
+
 	// Setup event handlers
 	s.logger.Info("Setting up events")
 	chEvents, err := s.setupEvents()

@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	"gopkg.in/inconshreveable/log15.v2"
 )
 
+// Structs
 type discourseUser struct {
 	ID                    int64  `json:"id"`
 	Username              string `json:"username"`
@@ -29,14 +29,14 @@ type discourseGroup struct {
 }
 
 type discourseGroupPost struct {
-	Name         string `json:"name"`
-	FullName     string `json:"full_name"`
-	PrimaryGroup string `json:"primary_group"`
-	Title        string `json:"title"`
+	Name         string `json:"name,omitempty"`
+	FullName     string `json:"full_name,omitempty"`
+	PrimaryGroup string `json:"primary_group,omitempty"`
+	Title        string `json:"title,omitempty"`
 }
 
 // Users
-func (s *syncer) discourseGetUsers() ([]discourseUser, error) {
+func (s *syncer) discourseGetPendingUsers() ([]discourseUser, error) {
 	users := []discourseUser{}
 
 	err := s.queryStruct("discourse", "GET", "/admin/users/list/pending.json", nil, &users)
@@ -74,24 +74,55 @@ func (s *syncer) discourseGetGroup(name string) (*discourseGroup, error) {
 	return &entry, nil
 }
 
-func (s *syncer) discourseGroupExists(name string) bool {
-	_, err := s.discourseGetGroup(name)
-	if err != nil {
-		return false
+func (s *syncer) discourseCreateGroup(name string, fullName string) (int64, error) {
+	title := ""
+	if fullName == "" {
+		fullName = name
+		title = fmt.Sprintf("Member of %s", fullName)
+	} else {
+		title = fmt.Sprintf("Member of %s (%s)", fullName, name)
 	}
 
-	return true
-}
-
-func (s *syncer) discourseCreateGroup(name string, fullName string) error {
 	group := discourseGroupPost{
 		Name:         name,
 		FullName:     fullName,
-		Title:        fmt.Sprintf("Member of team: %s", fullName),
+		Title:        title,
 		PrimaryGroup: "true",
 	}
 
-	err := s.queryStruct("discourse", "POST", "/admin/groups/", group, nil)
+	var resp interface{}
+	err := s.queryStruct("discourse", "POST", "/admin/groups/", group, &resp)
+	if err != nil {
+		return -1, err
+	}
+
+	return int64(resp.(map[string]interface{})["basic_group"].(map[string]interface{})["id"].(float64)), nil
+}
+
+func (s *syncer) discourseDeleteGroup(id int64) error {
+	err := s.queryStruct("discourse", "DELETE", fmt.Sprintf("/admin/groups/%d", id), nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *syncer) discourseUpdateGroup(id int64, name string, fullName string) error {
+	title := ""
+	if fullName == "" {
+		fullName = name
+		title = fmt.Sprintf("Member of %s", fullName)
+	} else {
+		title = fmt.Sprintf("Member of %s (%s)", fullName, name)
+	}
+
+	group := discourseGroupPost{
+		FullName: fullName,
+		Title:    title,
+	}
+
+	err := s.queryStruct("discourse", "PUT", fmt.Sprintf("/admin/groups/%d", id), group, nil)
 	if err != nil {
 		return err
 	}
@@ -100,16 +131,7 @@ func (s *syncer) discourseCreateGroup(name string, fullName string) error {
 }
 
 // Categories
-func (s *syncer) discourseCategoryExists(name string) bool {
-	err := s.queryStruct("discourse", "GET", fmt.Sprintf("/c/%s.json", name), nil, nil)
-	if err != nil {
-		return false
-	}
-
-	return true
-}
-
-func (s *syncer) discourseCreateCategory(name string, groups []string) error {
+func (s *syncer) discourseCreateCategory(name string, groups []string) (int64, error) {
 	category := discourseCategoryPost{
 		Name:      name,
 		Color:     s.config.CategoryColor,
@@ -123,7 +145,52 @@ func (s *syncer) discourseCreateCategory(name string, groups []string) error {
 	}
 	category.Permissions = permissions
 
-	err := s.queryStruct("discourse", "POST", "/categories", category, nil)
+	var resp interface{}
+	err := s.queryStruct("discourse", "POST", "/categories", category, &resp)
+	if err != nil {
+		return -1, err
+	}
+
+	return int64(resp.(map[string]interface{})["category"].(map[string]interface{})["id"].(float64)), nil
+}
+
+func (s *syncer) discourseDeleteCategory(id int64, name string) error {
+	topics, err := s.discourseGetTopics(name)
+	if err != nil {
+		return err
+	}
+
+	for _, topic := range topics {
+		s.discourseDeleteTopic(topic)
+	}
+
+	err = s.queryStruct("discourse", "DELETE", fmt.Sprintf("/categories/%d", id), nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Topics
+func (s *syncer) discourseGetTopics(category string) ([]int64, error) {
+	var resp interface{}
+	err := s.queryStruct("discourse", "GET", fmt.Sprintf("/c/%s.json", category), nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse the response
+	topics := []int64{}
+	for _, entry := range resp.(map[string]interface{})["topic_list"].(map[string]interface{})["topics"].([]interface{}) {
+		topics = append(topics, int64(entry.(map[string]interface{})["id"].(float64)))
+	}
+
+	return topics, nil
+}
+
+func (s *syncer) discourseDeleteTopic(id int64) error {
+	err := s.queryStruct("discourse", "DELETE", fmt.Sprintf("/t/%d.json", id), nil, nil)
 	if err != nil {
 		return err
 	}
@@ -166,7 +233,7 @@ func (s *syncer) discourseSetupUser(user discourseUser, group string) error {
 
 func (s *syncer) discourseProcessNewUsers() error {
 	// Get all users
-	users, err := s.discourseGetUsers()
+	users, err := s.discourseGetPendingUsers()
 	if err != nil {
 		return err
 	}
@@ -205,44 +272,65 @@ func (s *syncer) discourseProcessNewUsers() error {
 }
 
 // Team setup
-func (s *syncer) discourseCreateTeams() error {
-	// Get all the teams
-	teams, err := s.askgodGetTeams()
+func (s *syncer) discourseCreateTeam(name string, id int64, title string) error {
+	// Create the group
+	groupID, err := s.discourseCreateGroup(name, title)
 	if err != nil {
 		return err
 	}
 
-	for _, team := range teams {
-		// Extract the discourse groups if any
-		groups := strings.Split(team.Tags["discourse"], ";")
-
-		// Create any needed groups and categories
-		for _, group := range groups {
-			if group == "" {
-				continue
-			}
-
-			// Create the group if missing
-			if !s.discourseGroupExists(group) {
-				err = s.discourseCreateGroup(group, team.Name)
-				if err != nil {
-					return err
-				}
-
-				s.logger.Info("Created new group", log15.Ctx{"name": group})
-			}
-
-			// Create the category if missing
-			if !s.discourseCategoryExists(group) {
-				err = s.discourseCreateCategory(group, []string{group})
-				if err != nil {
-					return err
-				}
-
-				s.logger.Info("Created new category", log15.Ctx{"name": group})
-			}
-		}
+	// Create the category
+	categoryID, err := s.discourseCreateCategory(name, []string{name})
+	if err != nil {
+		return err
 	}
 
+	// Setup the DB entry
+	err = s.dbCreateTeam(id, title, name, groupID, categoryID)
+	if err != nil {
+		return err
+	}
+
+	s.logger.Info("Created new team", log15.Ctx{"name": name, "title": title})
+	return nil
+}
+
+func (s *syncer) discourseRenameTeam(name string, groupID int64, title string) error {
+	// Set the fullName and title
+	err := s.discourseUpdateGroup(groupID, name, title)
+	if err != nil {
+		return err
+	}
+
+	// Update the DB state
+	err = s.dbRenameTeam(groupID, title)
+	if err != nil {
+		return err
+	}
+
+	s.logger.Info("Renamed team", log15.Ctx{"name": name, "title": title})
+	return nil
+}
+
+func (s *syncer) discourseDeleteTeam(name string, groupID int64, categoryID int64) error {
+	// Delete the category
+	err := s.discourseDeleteCategory(categoryID, name)
+	if err != nil {
+		return err
+	}
+
+	// Delete the group
+	err = s.discourseDeleteGroup(groupID)
+	if err != nil {
+		return err
+	}
+
+	// Setup the DB entry
+	err = s.dbDeleteTeam(name, groupID, categoryID)
+	if err != nil {
+		return err
+	}
+
+	s.logger.Info("Deleted team", log15.Ctx{"name": name})
 	return nil
 }

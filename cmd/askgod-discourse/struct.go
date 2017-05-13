@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"net/http"
 
 	"gopkg.in/inconshreveable/log15.v2"
@@ -11,6 +12,7 @@ type syncer struct {
 	logger        log15.Logger
 	httpAskgod    *http.Client
 	httpDiscourse *http.Client
+	db            *sql.DB
 }
 
 func getSyncer(path string) (*syncer, error) {

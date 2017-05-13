@@ -49,9 +49,6 @@ func (s *syncer) setupEvents() (chan error, error) {
 					continue
 				}
 
-				// Update in-memory copy
-				// FIXME
-
 				// Update discourse
 				s.logger.Debug("Askgod triggered posts update")
 				err = s.syncPosts()
@@ -72,9 +69,6 @@ func (s *syncer) setupEvents() (chan error, error) {
 				if entry.Type != "team-added" && entry.Type != "team-removed" && entry.Type != "team-updated" {
 					continue
 				}
-
-				// Update in-memory copy
-				// FIXME
 
 				// Update discourse
 				s.logger.Debug("Askgod triggered teams update", log15.Ctx{"type": entry.Type})
