@@ -3,7 +3,7 @@ package main
 import (
 	"database/sql"
 
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/mattn/go-sqlite3"
 )
 
 const schema string = `
@@ -34,11 +34,20 @@ type dbTeam struct {
 	DiscourseCategoryID int64
 }
 
+func enableForeignKeys(conn *sqlite3.SQLiteConn) error {
+	_, err := conn.Exec("PRAGMA foreign_keys=ON;", nil)
+	return err
+}
+
+func init() {
+	sql.Register("sqlite3_with_fk", &sqlite3.SQLiteDriver{ConnectHook: enableForeignKeys})
+}
+
 // Connect sets up the database connection and returns a DB struct
 func (s *syncer) dbSetup() error {
 	s.logger.Info("Connecting to the database")
 
-	sqlDB, err := sql.Open("sqlite3", s.config.Database)
+	sqlDB, err := sql.Open("sqlite3_with_fk", s.config.Database)
 	if err != nil {
 		return err
 	}
@@ -123,6 +132,53 @@ func (s *syncer) dbRenameTeam(discourseGroupID int64, askgodName string) error {
 func (s *syncer) dbDeleteTeam(discourseName string, discourseGroupID int64, discourseCategoryID int64) error {
 	// Delete a team DB entry
 	_, err := s.db.Exec("DELETE FROM teams WHERE discourse_name=? AND discourse_group_id=? AND discourse_category_id=?;", discourseName, discourseGroupID, discourseCategoryID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *syncer) dbGetTeamPosts() (map[int64]map[string]int64, error) {
+	// Return a map of askgod teamids to map of post to postid
+	resp := map[int64]map[string]int64{}
+
+	// Fetch the needed data
+	rows, err := s.db.Query("SELECT teams.askgod_id, posts.name, posts.discourse_post_id FROM posts LEFT JOIN teams ON teams.id=posts.team_id;")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Iterate through the results
+	for rows.Next() {
+		teamid := int64(-1)
+		name := ""
+		postid := int64(-1)
+
+		err := rows.Scan(&teamid, &name, &postid)
+		if err != nil {
+			return nil, err
+		}
+
+		if resp[teamid] == nil {
+			resp[teamid] = map[string]int64{}
+		}
+		resp[teamid][name] = postid
+	}
+
+	// Check for any error that might have happened
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func (s *syncer) dbCreatePost(askgodID int64, postName string, postID int64) error {
+	_, err := s.db.Exec("INSERT INTO posts (team_id, name, discourse_post_id) VALUES ((SELECT id FROM teams WHERE askgod_id=?), ?, ?);",
+		askgodID, postName, postID)
 	if err != nil {
 		return err
 	}

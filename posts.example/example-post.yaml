@@ -5,6 +5,6 @@ trigger:
   tag: flag01
 
 body: |-
-  Congratulations on scoring %{flag_value}!
+  Congratulations %{team_name} on scoring even more points!
 
   We're told that there may be more flags hidding though, look a bit closer.

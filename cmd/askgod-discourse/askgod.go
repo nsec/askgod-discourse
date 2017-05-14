@@ -20,6 +20,58 @@ func (s *syncer) askgodGetTeams() ([]api.AdminTeam, error) {
 	return teams, nil
 }
 
+func (s *syncer) askgodGetTeamDiscourseFlags() (map[string][]int64, error) {
+	// Get all the flags
+	flags := []api.AdminFlag{}
+	err := s.queryStruct("askgod", "GET", "/flags", nil, &flags)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get all the scores
+	scores := []api.AdminScore{}
+	err = s.queryStruct("askgod", "GET", "/scores", nil, &scores)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate the output
+	resp := map[string][]int64{}
+
+	for _, flag := range flags {
+		if flag.Tags["discourse"] == "" {
+			continue
+		}
+
+		teams := []int64{}
+		for _, score := range scores {
+			if score.FlagID == flag.ID {
+				teams = append(teams, score.TeamID)
+			}
+		}
+
+		resp[flag.Tags["discourse"]] = teams
+	}
+
+	return resp, nil
+}
+
+func (s *syncer) askgodGetTeamScores() (map[int64]int64, error) {
+	// Grab the scoreboard
+	board := []api.ScoreboardEntry{}
+	err := s.queryStruct("askgod", "GET", "/scoreboard", nil, &board)
+	if err != nil {
+		return nil, err
+	}
+
+	teams := map[int64]int64{}
+	for _, entry := range board {
+		teams[entry.Team.ID] = entry.Value
+	}
+
+	return teams, nil
+}
+
 func (s *syncer) askgodTeamForIP(ipStr string) (*api.AdminTeam, error) {
 	// Parse the IP
 	ip := net.ParseIP(ipStr)

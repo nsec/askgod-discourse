@@ -5,7 +5,6 @@ trigger:
 
 title: Already past 100 points?
 body: |-
-  We've just noticed that you're already at %{team_score} points thanks
-  to that last flag you submitted that got you %{flag_value}.
+  We've just noticed that you're already at %{team_score} points!
 
   Keep up the great work %{team_name}!

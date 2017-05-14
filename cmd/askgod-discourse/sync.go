@@ -1,7 +1,14 @@
 package main
 
 import (
+	"fmt"
+	"io/ioutil"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/nsec/askgod/api"
+	"gopkg.in/yaml.v2"
 )
 
 func (s *syncer) syncTeams() error {
@@ -26,7 +33,7 @@ func (s *syncer) syncTeams() error {
 	// Make a map based on askgod team id
 	dbTeamsMap := map[int64]dbTeam{}
 	for _, entry := range dbTeams {
-		dbTeamsMap[entry.ID] = entry
+		dbTeamsMap[entry.AskgodID] = entry
 	}
 
 	// Update the teams
@@ -61,7 +68,7 @@ func (s *syncer) syncTeams() error {
 
 	// Delete removed teams
 	for _, entry := range dbTeams {
-		_, ok := askgodTeamsMap[entry.ID]
+		_, ok := askgodTeamsMap[entry.AskgodID]
 
 		if !ok {
 			// Delete the team
@@ -75,6 +82,211 @@ func (s *syncer) syncTeams() error {
 	return nil
 }
 
+type post struct {
+	Type    string       `yaml:"type"`
+	Topic   string       `yaml:"topic"`
+	Trigger *postTrigger `yaml:"trigger"`
+	Title   string       `yaml:"title"`
+	API     *postAPI     `yaml:"api"`
+	Body    string       `yaml:"body"`
+}
+
+type postTrigger struct {
+	Type      string `yaml:"type"`
+	Tag       string `yaml:"tag"`
+	Value     int64  `yaml:"value"`
+	After     string `yaml:"after"`
+	AfterTime time.Time
+}
+
+type postAPI struct {
+	User string `yaml:"user"`
+	Key  string `yaml:"key"`
+}
+
 func (s *syncer) syncPosts() error {
+	posts := map[string]post{}
+
+	// Get the submitted flags
+	askgodFlags, err := s.askgodGetTeamDiscourseFlags()
+	if err != nil {
+		return err
+	}
+
+	// Get the current scores
+	askgodScores, err := s.askgodGetTeamScores()
+	if err != nil {
+		return err
+	}
+
+	// Get all the posts
+	dbTeamPosts, err := s.dbGetTeamPosts()
+	if err != nil {
+		return err
+	}
+
+	// Get all the teams from the database
+	dbTeams, err := s.dbGetTeams()
+	if err != nil {
+		return err
+	}
+
+	// Enumerate the posts directory
+	files, err := ioutil.ReadDir(s.config.Posts)
+	if err != nil {
+		return err
+	}
+
+	// Parse the individual yaml files
+	for _, file := range files {
+		if !strings.HasSuffix(file.Name(), ".yaml") {
+			continue
+		}
+
+		// Get the full path
+		path := filepath.Join(s.config.Posts, file.Name())
+
+		// Read the file
+		content, err := ioutil.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		// Parse the content
+		newPost := post{}
+		err = yaml.Unmarshal(content, &newPost)
+		if err != nil {
+			return err
+		}
+
+		// Convert timestamps
+		if newPost.Trigger != nil {
+			if newPost.Trigger.After != "" {
+				ts, err := time.ParseInLocation("2006/01/02 15:04", newPost.Trigger.After, time.Local)
+				if err != nil {
+					return err
+				}
+
+				newPost.Trigger.AfterTime = ts
+			}
+		}
+
+		// Add the post to the map
+		name := strings.TrimSuffix(file.Name(), ".yaml")
+		posts[name] = newPost
+	}
+
+	// Processing of post entries
+	processEntry := func(postType string) error {
+		for name, post := range posts {
+			teams := []dbTeam{}
+
+			// Sort out API keys
+			apiUser := s.config.DiscourseAPIUser
+			apiKey := s.config.DiscourseAPIKey
+			if post.API != nil {
+				apiUser = post.API.User
+				apiKey = post.API.Key
+			}
+
+			// Only process the type we've been asked for
+			if post.Type != postType {
+				continue
+			}
+
+			// Validate the trigger
+			if post.Trigger != nil {
+				if post.Trigger.Type == "timer" {
+					if post.Trigger.AfterTime.Unix() > time.Now().Unix() {
+						// Not time yet
+						continue
+					}
+
+					// If it's time, send to everyone
+					teams = dbTeams
+				} else if post.Trigger.Type == "flag" {
+					for _, team := range dbTeams {
+						if post.Trigger.Tag == "" {
+							if askgodScores[team.AskgodID] == 0 {
+								// Hasn't sent a flag yet
+								continue
+							}
+						} else {
+							if !int64InSlice(team.AskgodID, askgodFlags[post.Trigger.Tag]) {
+								// Not scored that yet
+								continue
+							}
+						}
+						teams = append(teams, team)
+					}
+				} else if post.Trigger.Type == "score" {
+					for _, team := range dbTeams {
+						if askgodScores[team.AskgodID] < post.Trigger.Value {
+							// Not there yet
+							continue
+						}
+
+						teams = append(teams, team)
+					}
+				}
+			} else {
+				// Everyone is getting the post
+				teams = dbTeams
+			}
+
+			// Post to affected teams
+			for _, team := range teams {
+				_, ok := dbTeamPosts[team.AskgodID][name]
+				if ok {
+					// Already posted for this team, skip
+					continue
+				}
+
+				// Apply templating
+				if team.AskgodName == "" {
+					team.AskgodName = team.DiscourseName
+				}
+
+				post.Body = strings.Replace(post.Body, "%{team_name}", team.AskgodName, -1)
+				post.Body = strings.Replace(post.Body, "%{team_score}", fmt.Sprintf("%d", askgodScores[team.AskgodID]), -1)
+
+				if post.Type == "topic" {
+					err := s.discourseCreateTopic(team.DiscourseName, team.AskgodID, apiUser, apiKey, name, team.DiscourseCategoryID, post.Title, post.Body)
+					if err != nil {
+						return err
+					}
+				} else if post.Type == "post" {
+					postID := dbTeamPosts[team.AskgodID][post.Topic]
+					err := s.discourseCreatePost(team.DiscourseName, team.AskgodID, apiUser, apiKey, name, postID, post.Body)
+					if err != nil {
+						return err
+					}
+				} else {
+					return fmt.Errorf("Invalid type: %s", post.Type)
+				}
+			}
+		}
+
+		return nil
+	}
+
+	// Process all topics first
+	err = processEntry("topic")
+	if err != nil {
+		return err
+	}
+
+	// Refresh the list of posts
+	dbTeamPosts, err = s.dbGetTeamPosts()
+	if err != nil {
+		return err
+	}
+
+	// Then the posts
+	err = processEntry("post")
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

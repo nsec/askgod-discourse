@@ -1,4 +1,5 @@
 database: state.db
+posts: posts/
 
 askgod_url:
 askgod_cert:

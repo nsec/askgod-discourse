@@ -189,6 +189,22 @@ func (s *syncer) discourseGetTopics(category string) ([]int64, error) {
 	return topics, nil
 }
 
+func (s *syncer) discourseCreateTopicAs(category int64, title string, body string, apiUser string, apiKey string) (int64, error) {
+	post := map[string]interface{}{
+		"category": category,
+		"title":    title,
+		"raw":      body,
+	}
+
+	var resp interface{}
+	err := s.queryStruct("discourse", "POST", fmt.Sprintf("/posts?api_username=%s&api_key=%s", apiUser, apiKey), post, &resp)
+	if err != nil {
+		return -1, err
+	}
+
+	return int64(resp.(map[string]interface{})["topic_id"].(float64)), nil
+}
+
 func (s *syncer) discourseDeleteTopic(id int64) error {
 	err := s.queryStruct("discourse", "DELETE", fmt.Sprintf("/t/%d.json", id), nil, nil)
 	if err != nil {
@@ -196,6 +212,22 @@ func (s *syncer) discourseDeleteTopic(id int64) error {
 	}
 
 	return nil
+}
+
+// Posts
+func (s *syncer) discourseCreatePostAs(topic int64, body string, apiUser string, apiKey string) (int64, error) {
+	post := map[string]interface{}{
+		"topic_id": topic,
+		"raw":      body,
+	}
+
+	var resp interface{}
+	err := s.queryStruct("discourse", "POST", fmt.Sprintf("/posts?api_username=%s&api_key=%s", apiUser, apiKey), post, &resp)
+	if err != nil {
+		return -1, err
+	}
+
+	return int64(resp.(map[string]interface{})["id"].(float64)), nil
 }
 
 // User setup
@@ -332,5 +364,40 @@ func (s *syncer) discourseDeleteTeam(name string, groupID int64, categoryID int6
 	}
 
 	s.logger.Info("Deleted team", log15.Ctx{"name": name})
+	return nil
+}
+
+func (s *syncer) discourseCreateTopic(name string, id int64, apiUser string, apiKey string, postName string, postCategory int64, postTitle string, postBody string) error {
+	// Create the topic
+	topicID, err := s.discourseCreateTopicAs(postCategory, postTitle, postBody, apiUser, apiKey)
+	if err != nil {
+		return err
+	}
+
+	// Setup the DB entry
+	err = s.dbCreatePost(id, postName, topicID)
+	if err != nil {
+		return err
+	}
+
+	s.logger.Info("New topic", log15.Ctx{"team": name, "name": postName, "id": topicID})
+	return nil
+
+}
+
+func (s *syncer) discourseCreatePost(name string, id int64, apiUser string, apiKey string, postName string, postID int64, postBody string) error {
+	// Create the post
+	postID, err := s.discourseCreatePostAs(postID, postBody, apiUser, apiKey)
+	if err != nil {
+		return err
+	}
+
+	// Setup the DB entry
+	err = s.dbCreatePost(id, postName, postID)
+	if err != nil {
+		return err
+	}
+
+	s.logger.Info("New post", log15.Ctx{"team": name, "name": postName, "id": postID})
 	return nil
 }

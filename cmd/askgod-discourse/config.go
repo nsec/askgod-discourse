@@ -12,6 +12,7 @@ type config struct {
 	AskgodCert string `yaml:"askgod_cert"`
 
 	Database string `yaml:"database"`
+	Posts    string `yaml:"posts"`
 
 	DiscourseURL     string `yaml:"discourse_url"`
 	DiscourseCert    string `yaml:"discourse_cert"`

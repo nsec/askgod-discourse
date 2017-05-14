@@ -87,7 +87,11 @@ func (s *syncer) websocket(server string, path string) (*websocket.Conn, error) 
 		url = fmt.Sprintf("%s/1.0%s", s.config.AskgodURL, path)
 	} else if server == "discourse" {
 		srv = s.httpDiscourse
-		url = fmt.Sprintf("%s%s?api_key=%s&api_username=%s", s.config.DiscourseURL, path, s.config.DiscourseAPIKey, s.config.DiscourseAPIUser)
+		if !strings.Contains(path, "api_key") {
+			url = fmt.Sprintf("%s%s?api_key=%s&api_username=%s", s.config.DiscourseURL, path, s.config.DiscourseAPIKey, s.config.DiscourseAPIUser)
+		} else {
+			url = fmt.Sprintf("%s%s", s.config.DiscourseURL, path)
+		}
 	} else {
 		return nil, fmt.Errorf("Unknown server: %s", server)
 	}
@@ -128,7 +132,11 @@ func (s *syncer) queryStruct(server string, method string, path string, data int
 		url = fmt.Sprintf("%s/1.0%s", s.config.AskgodURL, path)
 	} else if server == "discourse" {
 		srv = s.httpDiscourse
-		url = fmt.Sprintf("%s%s?api_key=%s&api_username=%s", s.config.DiscourseURL, path, s.config.DiscourseAPIKey, s.config.DiscourseAPIUser)
+		if !strings.Contains(path, "api_key") {
+			url = fmt.Sprintf("%s%s?api_key=%s&api_username=%s", s.config.DiscourseURL, path, s.config.DiscourseAPIKey, s.config.DiscourseAPIUser)
+		} else {
+			url = fmt.Sprintf("%s%s", s.config.DiscourseURL, path)
+		}
 	} else {
 		return fmt.Errorf("Unknown server: %s", server)
 	}
