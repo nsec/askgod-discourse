@@ -198,6 +198,10 @@ func (s *syncer) discourseCreateTopicAs(category int64, title string, body strin
 		"raw":      body,
 	}
 
+	if apiKey == "" {
+		apiKey = s.config.DiscourseAPIKey
+	}
+
 	var resp interface{}
 	err := s.queryStruct("discourse", "POST", fmt.Sprintf("/posts?api_username=%s&api_key=%s", apiUser, apiKey), post, &resp)
 	if err != nil {
@@ -221,6 +225,10 @@ func (s *syncer) discourseCreatePostAs(topic int64, body string, apiUser string,
 	post := map[string]interface{}{
 		"topic_id": topic,
 		"raw":      body,
+	}
+
+	if apiKey == "" {
+		apiKey = s.config.DiscourseAPIKey
 	}
 
 	var resp interface{}
