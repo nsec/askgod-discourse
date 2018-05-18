@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
+
 	"gopkg.in/inconshreveable/log15.v2"
 )
 
@@ -245,19 +247,13 @@ func (s *syncer) discourseSetupUser(user discourseUser, group string) error {
 
 	err = s.queryStruct("discourse", "PUT", fmt.Sprintf("/groups/%d/members", adminGroup.ID), member, nil)
 	if err != nil {
-		return err
+		return errors.Wrap(err, fmt.Sprintf("Failed to update groups for '%s'", user.Username))
 	}
 
 	// Approve the user
 	err = s.queryStruct("discourse", "PUT", fmt.Sprintf("/admin/users/%d/approve", user.ID), nil, nil)
 	if err != nil {
-		return err
-	}
-
-	// Activate the user (we don't do e-mails)
-	err = s.queryStruct("discourse", "PUT", fmt.Sprintf("/admin/users/%d/activate", user.ID), nil, nil)
-	if err != nil {
-		return err
+		return errors.Wrap(err, fmt.Sprintf("Failed to approve '%s'", user.Username))
 	}
 
 	return nil
