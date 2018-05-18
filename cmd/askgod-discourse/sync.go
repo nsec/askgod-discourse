@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -274,6 +275,24 @@ func (s *syncer) syncPosts() error {
 	err = processEntry("topic")
 	if err != nil {
 		return err
+	}
+
+	// Delete removed posts
+	for _, entry := range dbTeamPosts {
+		for name, postid := range entry {
+			_, err := os.Lstat(filepath.Join(s.config.Posts, fmt.Sprintf("%s.yaml", name)))
+			if err != nil && os.IsNotExist(err) {
+				err = s.discourseDeleteTopic(postid)
+				if err != nil {
+					return err
+				}
+
+				err = s.dbDeletePost(postid)
+				if err != nil {
+					return err
+				}
+			}
+		}
 	}
 
 	// Refresh the list of posts

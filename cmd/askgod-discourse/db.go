@@ -139,6 +139,16 @@ func (s *syncer) dbDeleteTeam(discourseName string, discourseGroupID int64, disc
 	return nil
 }
 
+func (s *syncer) dbDeletePost(discoursePostID int64) error {
+	// Delete a team DB entry
+	_, err := s.db.Exec("DELETE FROM posts WHERE discourse_post_id=?;", discoursePostID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *syncer) dbGetTeamPosts() (map[int64]map[string]int64, error) {
 	// Return a map of askgod teamids to map of post to postid
 	resp := map[int64]map[string]int64{}

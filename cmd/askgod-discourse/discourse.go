@@ -217,6 +217,7 @@ func (s *syncer) discourseDeleteTopic(id int64) error {
 		return err
 	}
 
+	s.logger.Info("Deleted post", log15.Ctx{"id": id})
 	return nil
 }
 
