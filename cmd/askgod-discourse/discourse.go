@@ -30,6 +30,10 @@ type discourseGroup struct {
 	Name string `json:"name"`
 }
 
+type discourseGroups struct {
+	Groups []discourseGroup `json:"groups"`
+}
+
 type discourseGroupPost struct {
 	Name         string `json:"name,omitempty"`
 	FullName     string `json:"full_name,omitempty"`
@@ -71,7 +75,7 @@ func (s *syncer) discourseGetGroup(name string) (*discourseGroup, error) {
 	}
 
 	// Unwrap the response
-	entry := group["basic_group"]
+	entry := group["group"]
 
 	return &entry, nil
 }
@@ -124,7 +128,35 @@ func (s *syncer) discourseUpdateGroup(id int64, name string, fullName string) er
 		Title:    title,
 	}
 
-	err := s.queryStruct("discourse", "PUT", fmt.Sprintf("/admin/groups/%d", id), group, nil)
+	groupName := ""
+	page := 0
+	for {
+		// The ID based API was removed, use the slow way
+		groups := discourseGroups{}
+		err := s.queryStruct("discourse", "GET", fmt.Sprintf("/groups.json?api_key=%s&api_username=%s&page=%d", s.config.DiscourseAPIKey, s.config.DiscourseAPIUser, page), nil, &groups)
+		if err != nil {
+			return err
+		}
+
+		if len(groups.Groups) == 0 {
+			break
+		}
+
+		for _, group := range groups.Groups {
+			if group.ID == id {
+				groupName = group.Name
+				break
+			}
+		}
+
+		page += 1
+	}
+
+	if groupName == "" {
+		return fmt.Errorf("Couldn't find group for id: %v", id)
+	}
+
+	err := s.queryStruct("discourse", "PUT", fmt.Sprintf("/groups/%v", groupName), group, nil)
 	if err != nil {
 		return err
 	}
@@ -254,7 +286,7 @@ func (s *syncer) discourseSetupUser(user discourseUser, group string) error {
 		"usernames": user.Username,
 	}
 
-	err = s.queryStruct("discourse", "PUT", fmt.Sprintf("/groups/%d/members", adminGroup.ID), member, nil)
+	err = s.queryStruct("discourse", "PUT", fmt.Sprintf("/groups/%d/members.json", adminGroup.ID), member, nil)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("Failed to update groups for '%s'", user.Username))
 	}
