@@ -307,7 +307,13 @@ func (s *syncer) discourseProcessNewUsers() error {
 		return err
 	}
 
-	for _, user := range users {
+	for _, entry := range users {
+		// Pull the full entry
+		user, err := s.discourseGetUser(entry.ID)
+		if err != nil {
+			return err
+		}
+
 		// We only care about those that can be approved
 		if !user.CanApprove {
 			continue
