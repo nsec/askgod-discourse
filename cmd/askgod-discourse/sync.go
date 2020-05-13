@@ -237,6 +237,10 @@ func (s *syncer) syncPosts() error {
 
 			// Post to affected teams
 			for _, team := range teams {
+				if len(s.config.PublishRestricted) > 0 && !stringInSlice(team.DiscourseName, s.config.PublishRestricted) {
+					continue
+				}
+
 				_, ok := dbTeamPosts[team.AskgodID][name]
 				if ok {
 					// Already posted for this team, skip

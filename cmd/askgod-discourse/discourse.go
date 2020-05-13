@@ -22,6 +22,8 @@ type discourseCategoryPost struct {
 	Color     string `json:"color"`
 	TextColor string `json:"text_color"`
 
+	ParentCategory string `json:"parent_category_id"`
+
 	Permissions map[string]string `json:"permissions"`
 }
 
@@ -128,35 +130,7 @@ func (s *syncer) discourseUpdateGroup(id int64, name string, fullName string) er
 		Title:    title,
 	}
 
-	groupName := ""
-	page := 0
-	for {
-		// The ID based API was removed, use the slow way
-		groups := discourseGroups{}
-		err := s.queryStruct("discourse", "GET", fmt.Sprintf("/groups.json?api_key=%s&api_username=%s&page=%d", s.config.DiscourseAPIKey, s.config.DiscourseAPIUser, page), nil, &groups)
-		if err != nil {
-			return err
-		}
-
-		if len(groups.Groups) == 0 {
-			break
-		}
-
-		for _, group := range groups.Groups {
-			if group.ID == id {
-				groupName = group.Name
-				break
-			}
-		}
-
-		page += 1
-	}
-
-	if groupName == "" {
-		return fmt.Errorf("Couldn't find group for id: %v", id)
-	}
-
-	err := s.queryStruct("discourse", "PUT", fmt.Sprintf("/groups/%v", groupName), group, nil)
+	err := s.queryStruct("discourse", "PUT", fmt.Sprintf("/groups/%v", id), group, nil)
 	if err != nil {
 		return err
 	}
@@ -167,9 +141,10 @@ func (s *syncer) discourseUpdateGroup(id int64, name string, fullName string) er
 // Categories
 func (s *syncer) discourseCreateCategory(name string, groups []string) (int64, error) {
 	category := discourseCategoryPost{
-		Name:      name,
-		Color:     s.config.CategoryColor,
-		TextColor: s.config.CategoryTextColor,
+		Name:           name,
+		Color:          s.config.CategoryColor,
+		TextColor:      s.config.CategoryTextColor,
+		ParentCategory: s.config.CategoryParent,
 	}
 
 	permissions := map[string]string{}
@@ -189,7 +164,7 @@ func (s *syncer) discourseCreateCategory(name string, groups []string) (int64, e
 }
 
 func (s *syncer) discourseDeleteCategory(id int64, name string) error {
-	topics, err := s.discourseGetTopics(name)
+	topics, err := s.discourseGetTopics(id)
 	if err != nil {
 		return err
 	}
@@ -207,9 +182,9 @@ func (s *syncer) discourseDeleteCategory(id int64, name string) error {
 }
 
 // Topics
-func (s *syncer) discourseGetTopics(category string) ([]int64, error) {
+func (s *syncer) discourseGetTopics(id int64) ([]int64, error) {
 	var resp interface{}
-	err := s.queryStruct("discourse", "GET", fmt.Sprintf("/c/%s.json", category), nil, &resp)
+	err := s.queryStruct("discourse", "GET", fmt.Sprintf("/c/%d.json", id), nil, &resp)
 	if err != nil {
 		return nil, err
 	}

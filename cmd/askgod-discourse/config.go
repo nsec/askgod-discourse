@@ -22,6 +22,9 @@ type config struct {
 	CategoryAccess    []string `yaml:"category_access"`
 	CategoryColor     string   `yaml:"category_color"`
 	CategoryTextColor string   `yaml:"category_text_color"`
+	CategoryParent    string   `yaml:"category_parent"`
+
+	PublishRestricted []string `yaml:"publish_restricted"`
 }
 
 func parseConfig(path string) (*config, error) {
