@@ -219,9 +219,12 @@ func (s *syncer) discourseCreateTopicAs(category int64, title string, body strin
 }
 
 func (s *syncer) discourseDeleteTopic(id int64) error {
-	err := s.queryStruct("discourse", "DELETE", fmt.Sprintf("/t/%d.json", id), nil, nil)
-	if err != nil {
-		return err
+	origErr := s.queryStruct("discourse", "DELETE", fmt.Sprintf("/t/%d.json", id), nil, nil)
+	if origErr != nil {
+		err := s.queryStruct("discourse", "DELETE", fmt.Sprintf("/posts/%d", id), nil, nil)
+		if err != nil {
+			return origErr
+		}
 	}
 
 	s.logger.Info("Deleted post", log15.Ctx{"id": id})
