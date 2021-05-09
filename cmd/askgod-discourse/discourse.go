@@ -47,7 +47,7 @@ type discourseGroupPost struct {
 func (s *syncer) discourseGetPendingUsers() ([]discourseUser, error) {
 	users := []discourseUser{}
 
-	err := s.queryStruct("discourse", "GET", "/admin/users/list/pending.json", nil, &users)
+	err := s.queryStruct("discourse", "GET", "/admin/users/list/pending.json", nil, &users, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (s *syncer) discourseGetPendingUsers() ([]discourseUser, error) {
 func (s *syncer) discourseGetUser(id int64) (*discourseUser, error) {
 	user := discourseUser{}
 
-	err := s.queryStruct("discourse", "GET", fmt.Sprintf("/admin/users/%d.json", id), nil, &user)
+	err := s.queryStruct("discourse", "GET", fmt.Sprintf("/admin/users/%d.json", id), nil, &user, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (s *syncer) discourseGetGroup(name string) (*discourseGroup, error) {
 	// For some reason the response is wrapped
 	group := map[string]discourseGroup{}
 
-	err := s.queryStruct("discourse", "GET", fmt.Sprintf("/groups/%s.json", name), nil, &group)
+	err := s.queryStruct("discourse", "GET", fmt.Sprintf("/groups/%s.json", name), nil, &group, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (s *syncer) discourseCreateGroup(name string, fullName string) (int64, erro
 	}
 
 	var resp interface{}
-	err := s.queryStruct("discourse", "POST", "/admin/groups/", group, &resp)
+	err := s.queryStruct("discourse", "POST", "/admin/groups/", group, &resp, nil)
 	if err != nil {
 		return -1, err
 	}
@@ -108,7 +108,7 @@ func (s *syncer) discourseCreateGroup(name string, fullName string) (int64, erro
 }
 
 func (s *syncer) discourseDeleteGroup(id int64) error {
-	err := s.queryStruct("discourse", "DELETE", fmt.Sprintf("/admin/groups/%d", id), nil, nil)
+	err := s.queryStruct("discourse", "DELETE", fmt.Sprintf("/admin/groups/%d", id), nil, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (s *syncer) discourseUpdateGroup(id int64, name string, fullName string) er
 		Title:    title,
 	}
 
-	err := s.queryStruct("discourse", "PUT", fmt.Sprintf("/groups/%v", id), group, nil)
+	err := s.queryStruct("discourse", "PUT", fmt.Sprintf("/groups/%v", id), group, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (s *syncer) discourseCreateCategory(name string, groups []string) (int64, e
 	category.Permissions = permissions
 
 	var resp interface{}
-	err := s.queryStruct("discourse", "POST", "/categories", category, &resp)
+	err := s.queryStruct("discourse", "POST", "/categories", category, &resp, nil)
 	if err != nil {
 		return -1, err
 	}
@@ -173,7 +173,7 @@ func (s *syncer) discourseDeleteCategory(id int64, name string) error {
 		s.discourseDeleteTopic(topic)
 	}
 
-	err = s.queryStruct("discourse", "DELETE", fmt.Sprintf("/categories/%d", id), nil, nil)
+	err = s.queryStruct("discourse", "DELETE", fmt.Sprintf("/categories/%d", id), nil, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -184,7 +184,7 @@ func (s *syncer) discourseDeleteCategory(id int64, name string) error {
 // Topics
 func (s *syncer) discourseGetTopics(id int64) ([]int64, error) {
 	var resp interface{}
-	err := s.queryStruct("discourse", "GET", fmt.Sprintf("/c/%d.json", id), nil, &resp)
+	err := s.queryStruct("discourse", "GET", fmt.Sprintf("/c/%d.json", id), nil, &resp, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +210,13 @@ func (s *syncer) discourseCreateTopicAs(category int64, title string, body strin
 	}
 
 	var resp interface{}
-	err := s.queryStruct("discourse", "POST", fmt.Sprintf("/posts?api_username=%s&api_key=%s", apiUser, apiKey), post, &resp)
+
+	args := queryArgs{
+		discourseUser: apiUser,
+		discourseKey: apiKey,
+	}
+
+	err := s.queryStruct("discourse", "POST", "/posts", post, &resp, &args)
 	if err != nil {
 		return -1, err
 	}
@@ -219,9 +225,9 @@ func (s *syncer) discourseCreateTopicAs(category int64, title string, body strin
 }
 
 func (s *syncer) discourseDeleteTopic(id int64) error {
-	origErr := s.queryStruct("discourse", "DELETE", fmt.Sprintf("/t/%d.json", id), nil, nil)
+	origErr := s.queryStruct("discourse", "DELETE", fmt.Sprintf("/t/%d.json", id), nil, nil, nil)
 	if origErr != nil {
-		err := s.queryStruct("discourse", "DELETE", fmt.Sprintf("/posts/%d", id), nil, nil)
+		err := s.queryStruct("discourse", "DELETE", fmt.Sprintf("/posts/%d", id), nil, nil, nil)
 		if err != nil {
 			return origErr
 		}
@@ -243,7 +249,12 @@ func (s *syncer) discourseCreatePostAs(topic int64, body string, apiUser string,
 	}
 
 	var resp interface{}
-	err := s.queryStruct("discourse", "POST", fmt.Sprintf("/posts?api_username=%s&api_key=%s", apiUser, apiKey), post, &resp)
+	args := queryArgs{
+		discourseUser: apiUser,
+		discourseKey: apiKey,
+	}
+
+	err := s.queryStruct("discourse", "POST", "/posts", post, &resp, &args)
 	if err != nil {
 		return -1, err
 	}
@@ -264,13 +275,13 @@ func (s *syncer) discourseSetupUser(user discourseUser, group string) error {
 		"usernames": user.Username,
 	}
 
-	err = s.queryStruct("discourse", "PUT", fmt.Sprintf("/groups/%d/members.json", adminGroup.ID), member, nil)
+	err = s.queryStruct("discourse", "PUT", fmt.Sprintf("/groups/%d/members.json", adminGroup.ID), member, nil, nil)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("Failed to update groups for '%s'", user.Username))
 	}
 
 	// Approve the user
-	err = s.queryStruct("discourse", "PUT", fmt.Sprintf("/admin/users/%d/approve", user.ID), nil, nil)
+	err = s.queryStruct("discourse", "PUT", fmt.Sprintf("/admin/users/%d/approve", user.ID), nil, nil, nil)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("Failed to approve '%s'", user.Username))
 	}

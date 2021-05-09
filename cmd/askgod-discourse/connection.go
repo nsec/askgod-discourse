@@ -85,13 +85,6 @@ func (s *syncer) websocket(server string, path string) (*websocket.Conn, error) 
 	if server == "askgod" {
 		srv = s.httpAskgod
 		url = fmt.Sprintf("%s/1.0%s", s.config.AskgodURL, path)
-	} else if server == "discourse" {
-		srv = s.httpDiscourse
-		if !strings.Contains(path, "api_key") {
-			url = fmt.Sprintf("%s%s?api_key=%s&api_username=%s", s.config.DiscourseURL, path, s.config.DiscourseAPIKey, s.config.DiscourseAPIUser)
-		} else {
-			url = fmt.Sprintf("%s%s", s.config.DiscourseURL, path)
-		}
 	} else {
 		return nil, fmt.Errorf("Unknown server: %s", server)
 	}
@@ -120,7 +113,12 @@ func (s *syncer) websocket(server string, path string) (*websocket.Conn, error) 
 	return conn, err
 }
 
-func (s *syncer) queryStruct(server string, method string, path string, data interface{}, target interface{}) error {
+type queryArgs struct {
+	discourseUser string
+	discourseKey string
+}
+
+func (s *syncer) queryStruct(server string, method string, path string, data interface{}, target interface{}, args *queryArgs) error {
 	var req *http.Request
 	var err error
 
@@ -132,11 +130,7 @@ func (s *syncer) queryStruct(server string, method string, path string, data int
 		url = fmt.Sprintf("%s/1.0%s", s.config.AskgodURL, path)
 	} else if server == "discourse" {
 		srv = s.httpDiscourse
-		if !strings.Contains(path, "api_key") {
-			url = fmt.Sprintf("%s%s?api_key=%s&api_username=%s", s.config.DiscourseURL, path, s.config.DiscourseAPIKey, s.config.DiscourseAPIUser)
-		} else {
-			url = fmt.Sprintf("%s%s", s.config.DiscourseURL, path)
-		}
+		url = fmt.Sprintf("%s%s", s.config.DiscourseURL, path)
 	} else {
 		return fmt.Errorf("Unknown server: %s", server)
 	}
@@ -158,11 +152,41 @@ func (s *syncer) queryStruct(server string, method string, path string, data int
 
 		// Set the encoding accordingly
 		req.Header.Set("Content-Type", "application/json")
+
+		// Handle authentication
+		if server == "discourse" {
+			if args != nil && args.discourseUser != "" {
+				req.Header.Set("Api-Username", args.discourseUser)
+			} else {
+				req.Header.Set("Api-Username", s.config.DiscourseAPIUser)
+			}
+
+			if args != nil && args.discourseKey != "" {
+				req.Header.Set("Api-Key", args.discourseKey)
+			} else {
+				req.Header.Set("Api-Key", s.config.DiscourseAPIKey)
+			}
+		}
 	} else {
 		// No data to be sent along with the request
 		req, err = http.NewRequest(method, url, nil)
 		if err != nil {
 			return err
+		}
+
+		// Handle authentication
+		if server == "discourse" {
+			if args != nil && args.discourseUser != "" {
+				req.Header.Set("Api-Username", args.discourseUser)
+			} else {
+				req.Header.Set("Api-Username", s.config.DiscourseAPIUser)
+			}
+
+			if args != nil && args.discourseKey != "" {
+				req.Header.Set("Api-Key", args.discourseKey)
+			} else {
+				req.Header.Set("Api-Key", s.config.DiscourseAPIKey)
+			}
 		}
 	}
 
