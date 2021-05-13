@@ -7,7 +7,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.7
 	github.com/nsec/askgod v0.0.0-20210511165539-a7694cb6d566
 	github.com/pkg/errors v0.9.1
+	github.com/urfave/cli/v2 v2.3.0
 	gopkg.in/inconshreveable/log15.v2 v2.0.0-20200109203555-b30bc20e4fd1
-	gopkg.in/urfave/cli.v1 v1.20.0
 	gopkg.in/yaml.v2 v2.4.0
 )
