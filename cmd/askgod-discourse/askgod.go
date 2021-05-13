@@ -5,8 +5,8 @@ import (
 	"net"
 	"strings"
 
+	"github.com/inconshreveable/log15"
 	"github.com/nsec/askgod/api"
-	"gopkg.in/inconshreveable/log15.v2"
 )
 
 func (s *syncer) askgodGetTeams() ([]api.AdminTeam, error) {

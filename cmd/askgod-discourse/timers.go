@@ -3,7 +3,7 @@ package main
 import (
 	"time"
 
-	"gopkg.in/inconshreveable/log15.v2"
+	"github.com/inconshreveable/log15"
 )
 
 func (s *syncer) setupTimers() (chan error, error) {

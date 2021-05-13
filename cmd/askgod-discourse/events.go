@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 
+	"github.com/inconshreveable/log15"
 	"github.com/nsec/askgod/api"
-	"gopkg.in/inconshreveable/log15.v2"
 )
 
 func (s *syncer) setupEvents() (chan error, error) {
