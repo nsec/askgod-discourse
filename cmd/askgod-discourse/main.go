@@ -11,6 +11,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "askgod-discourse"
 	app.Usage = "CTF scoring system - discourse sync"
+	app.ArgsUsage = "<config>"
 	app.HideVersion = true
 	app.HideHelp = true
 	app.EnableBashCompletion = true

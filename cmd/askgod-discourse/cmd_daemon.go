@@ -1,12 +1,19 @@
 package main
 
 import (
+	"fmt"
+
 	"gopkg.in/urfave/cli.v1"
 )
 
 func cmdDaemon(ctx *cli.Context) error {
+	if ctx.NArg() == 0 {
+		cli.ShowAppHelp(ctx)
+		return fmt.Errorf("Missing required arguments")
+	}
+
 	// Load configuration
-	s, err := getSyncer("config.yaml")
+	s, err := getSyncer(ctx.Args().Get(0))
 	if err != nil {
 		return err
 	}
