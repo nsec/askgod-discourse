@@ -13,6 +13,9 @@ import (
 )
 
 func (s *syncer) syncTeams() error {
+	s.teamsLock.Lock()
+	defer s.teamsLock.Unlock()
+
 	// Get all teams from askgod
 	askgodTeams, err := s.askgodGetTeams()
 	if err != nil {
@@ -106,6 +109,9 @@ type postAPI struct {
 }
 
 func (s *syncer) syncPosts() error {
+	s.postsLock.Lock()
+	defer s.postsLock.Unlock()
+
 	posts := map[string]post{}
 
 	// Get the submitted flags

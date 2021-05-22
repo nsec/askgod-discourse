@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"net/http"
+	"sync"
 
 	"github.com/inconshreveable/log15"
 )
@@ -13,6 +14,9 @@ type syncer struct {
 	httpAskgod    *http.Client
 	httpDiscourse *http.Client
 	db            *sql.DB
+
+	postsLock sync.Mutex
+	teamsLock sync.Mutex
 }
 
 func getSyncer(path string) (*syncer, error) {
