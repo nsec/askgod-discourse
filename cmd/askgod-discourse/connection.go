@@ -108,7 +108,7 @@ func (s *syncer) websocket(server string, path string) (*websocket.Conn, error) 
 
 type queryArgs struct {
 	discourseUser string
-	discourseKey string
+	discourseKey  string
 }
 
 func (s *syncer) queryStruct(server string, method string, path string, data interface{}, target interface{}, args *queryArgs) error {

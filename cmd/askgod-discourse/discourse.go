@@ -213,7 +213,7 @@ func (s *syncer) discourseCreateTopicAs(category int64, title string, body strin
 
 	args := queryArgs{
 		discourseUser: apiUser,
-		discourseKey: apiKey,
+		discourseKey:  apiKey,
 	}
 
 	err := s.queryStruct("discourse", "POST", "/posts", post, &resp, &args)
@@ -251,7 +251,7 @@ func (s *syncer) discourseCreatePostAs(topic int64, body string, apiUser string,
 	var resp interface{}
 	args := queryArgs{
 		discourseUser: apiUser,
-		discourseKey: apiKey,
+		discourseKey:  apiKey,
 	}
 
 	err := s.queryStruct("discourse", "POST", "/posts", post, &resp, &args)
