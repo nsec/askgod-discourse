@@ -403,12 +403,14 @@ func (s *syncer) discourseCreateTopic(name string, id int64, apiUser string, api
 	// Create the topic
 	topicID, err := s.discourseCreateTopicAs(postCategory, postTitle, postBody, apiUser, apiKey)
 	if err != nil {
+		s.logger.Error("Failed to create topic", log15.Ctx{"err": err, "team": name, "name": postName, "id": topicID})
 		return err
 	}
 
 	// Setup the DB entry
 	err = s.dbCreatePost(id, postName, topicID)
 	if err != nil {
+		s.logger.Error("Failed to create topic", log15.Ctx{"err": err, "team": name, "name": postName, "id": topicID})
 		return err
 	}
 
@@ -421,12 +423,14 @@ func (s *syncer) discourseCreatePost(name string, id int64, apiUser string, apiK
 	// Create the post
 	postID, err := s.discourseCreatePostAs(postID, postBody, apiUser, apiKey)
 	if err != nil {
+		s.logger.Error("Failed to create post", log15.Ctx{"err": err, "team": name, "name": postName, "id": postID})
 		return err
 	}
 
 	// Setup the DB entry
 	err = s.dbCreatePost(id, postName, postID)
 	if err != nil {
+		s.logger.Error("Failed to create post", log15.Ctx{"err": err, "team": name, "name": postName, "id": postID})
 		return err
 	}
 
