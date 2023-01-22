@@ -93,6 +93,10 @@ type post struct {
 	Title   string       `yaml:"title"`
 	API     *postAPI     `yaml:"api"`
 	Body    string       `yaml:"body"`
+	Posts   []*struct {
+		API  *postAPI `yaml:"api"`
+		Body string   `yaml:"body"`
+	} `yaml:"posts"`
 }
 
 type postTrigger struct {
@@ -272,6 +276,21 @@ func (s *syncer) syncPosts() error {
 					if err != nil {
 						return err
 					}
+				} else if post.Type == "posts" {
+					postID := dbTeamPosts[team.AskgodID][post.Topic]
+					for _, subPost := range post.Posts {
+						subApiUser := apiUser
+						subApiKey := apiKey
+						if post.API != nil {
+							subApiUser = subPost.API.User
+							subApiKey = subPost.API.Key
+						}
+
+						err := s.discourseCreatePost(team.DiscourseName, team.AskgodID, subApiUser, subApiKey, name, postID, subPost.Body)
+						if err != nil {
+							return err
+						}
+					}
 				} else {
 					return fmt.Errorf("Invalid type: %s", post.Type)
 				}
@@ -313,6 +332,12 @@ func (s *syncer) syncPosts() error {
 
 	// Then the posts
 	err = processEntry("post")
+	if err != nil {
+		return err
+	}
+
+	// Then the posts
+	err = processEntry("posts")
 	if err != nil {
 		return err
 	}
