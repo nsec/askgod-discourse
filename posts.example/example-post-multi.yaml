@@ -1,0 +1,18 @@
+type: posts
+topic: example-topic
+trigger:
+  type: flag
+  tag: flag02
+posts:
+  - api:
+      user: john-doe
+      key: 87075d4b01b6572bb83267e201a2dc9e20ca5be2c184eb59eb2578318d175f1e
+
+    body: |-
+      This is posted as John Doe and will be posted before the post below
+  - api:
+      user: jane-doe
+      key: 87075d4b01b6572bb83267e201a2dc9e20ca5be2c184eb59eb2578318d175f1e
+
+    body: |-
+      This is posted after the above post, by Jane Doe
