@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -87,13 +88,14 @@ func (s *syncer) syncTeams() error {
 }
 
 type post struct {
-	Type    string       `yaml:"type"`
-	Topic   string       `yaml:"topic"`
-	Trigger *postTrigger `yaml:"trigger"`
-	Title   string       `yaml:"title"`
-	API     *postAPI     `yaml:"api"`
-	Body    string       `yaml:"body"`
-	Posts   []*struct {
+	Type      string                      `yaml:"type"`
+	Topic     string                      `yaml:"topic"`
+	Trigger   *postTrigger                `yaml:"trigger"`
+	Title     string                      `yaml:"title"`
+	API       *postAPI                    `yaml:"api"`
+	Body      string                      `yaml:"body"`
+	Variables map[string]map[int64]string `yaml:"variables"`
+	Posts     []*struct {
 		API  *postAPI `yaml:"api"`
 		Body string   `yaml:"body"`
 	} `yaml:"posts"`
@@ -264,6 +266,12 @@ func (s *syncer) syncPosts() error {
 
 				post.Body = strings.Replace(post.Body, "%{team_name}", team.AskgodName, -1)
 				post.Body = strings.Replace(post.Body, "%{team_score}", fmt.Sprintf("%d", askgodScores[team.AskgodID]), -1)
+
+				// Process template variables
+				r := regexp.MustCompile(`%\{(\w+)\}`)
+				post.Body = r.ReplaceAllStringFunc(post.Body, func(p string) string {
+					return post.Variables[p[2:len(p)-1]][team.AskgodID]
+				})
 
 				if post.Type == "topic" {
 					err := s.discourseCreateTopic(team.DiscourseName, team.AskgodID, apiUser, apiKey, name, team.DiscourseCategoryID, post.Title, post.Body)

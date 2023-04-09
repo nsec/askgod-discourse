@@ -1,0 +1,15 @@
+type: topic
+
+title: New challenge !
+body: |-
+  Challenge with a team specific variable : %{my_var}
+
+variables:
+  my_var:
+    0: variable for team 000
+    1: variable for team 001
+    2: variable for team 002
+    3: variable for team 003
+    4: variable for team 004
+    # and so on...
+
