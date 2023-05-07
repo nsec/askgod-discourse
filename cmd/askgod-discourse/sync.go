@@ -289,7 +289,7 @@ func (s *syncer) syncPosts() error {
 					for _, subPost := range post.Posts {
 						subApiUser := apiUser
 						subApiKey := apiKey
-						if post.API != nil {
+						if subPost.API != nil {
 							subApiUser = subPost.API.User
 							subApiKey = subPost.API.Key
 						}
