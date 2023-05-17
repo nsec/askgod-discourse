@@ -279,13 +279,15 @@ func (s *syncer) syncPosts() error {
 						return err
 					}
 				} else if post.Type == "post" {
-					postID := dbTeamPosts[team.AskgodID][post.Topic]
-					err := s.discourseCreatePost(team.DiscourseName, team.AskgodID, apiUser, apiKey, name, postID, post.Body)
-					if err != nil {
-						return err
+					postIDs := dbTeamPosts[team.AskgodID][post.Topic]
+					for _, id := range postIDs {
+						err := s.discourseCreatePost(team.DiscourseName, team.AskgodID, apiUser, apiKey, name, id, post.Body)
+						if err != nil {
+							return err
+						}
 					}
 				} else if post.Type == "posts" {
-					postID := dbTeamPosts[team.AskgodID][post.Topic]
+					postIDs := dbTeamPosts[team.AskgodID][post.Topic]
 					for _, subPost := range post.Posts {
 						subApiUser := apiUser
 						subApiKey := apiKey
@@ -294,9 +296,11 @@ func (s *syncer) syncPosts() error {
 							subApiKey = subPost.API.Key
 						}
 
-						err := s.discourseCreatePost(team.DiscourseName, team.AskgodID, subApiUser, subApiKey, name, postID, subPost.Body)
-						if err != nil {
-							return err
+						for _, id := range postIDs {
+							err := s.discourseCreatePost(team.DiscourseName, team.AskgodID, subApiUser, subApiKey, name, id, subPost.Body)
+							if err != nil {
+								return err
+							}
 						}
 					}
 				} else {
@@ -316,17 +320,19 @@ func (s *syncer) syncPosts() error {
 
 	// Delete removed posts
 	for _, entry := range dbTeamPosts {
-		for name, postid := range entry {
+		for name, postids := range entry {
 			_, err := os.Lstat(filepath.Join(s.config.Posts, fmt.Sprintf("%s.yaml", name)))
 			if err != nil && os.IsNotExist(err) {
-				err = s.discourseDeleteTopic(postid)
-				if err != nil {
-					return err
-				}
+				for _, postid := range postids {
+					err = s.discourseDeleteTopic(postid)
+					if err != nil {
+						return err
+					}
 
-				err = s.dbDeletePost(postid)
-				if err != nil {
-					return err
+					err = s.dbDeletePost(postid)
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}

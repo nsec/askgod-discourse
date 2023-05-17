@@ -149,9 +149,9 @@ func (s *syncer) dbDeletePost(discoursePostID int64) error {
 	return nil
 }
 
-func (s *syncer) dbGetTeamPosts() (map[int64]map[string]int64, error) {
+func (s *syncer) dbGetTeamPosts() (map[int64]map[string][]int64, error) {
 	// Return a map of askgod teamids to map of post to postid
-	resp := map[int64]map[string]int64{}
+	resp := map[int64]map[string][]int64{}
 
 	// Fetch the needed data
 	rows, err := s.db.Query("SELECT teams.askgod_id, posts.name, posts.discourse_post_id FROM posts LEFT JOIN teams ON teams.id=posts.team_id;")
@@ -172,9 +172,12 @@ func (s *syncer) dbGetTeamPosts() (map[int64]map[string]int64, error) {
 		}
 
 		if resp[teamid] == nil {
-			resp[teamid] = map[string]int64{}
+			resp[teamid] = map[string][]int64{}
 		}
-		resp[teamid][name] = postid
+		if resp[teamid][name] == nil {
+			resp[teamid][name] = []int64{}
+		}
+		resp[teamid][name] = append(resp[teamid][name], postid)
 	}
 
 	// Check for any error that might have happened
