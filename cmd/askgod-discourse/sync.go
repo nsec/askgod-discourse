@@ -264,24 +264,25 @@ func (s *syncer) syncPosts() error {
 					team.AskgodName = team.DiscourseName
 				}
 
-				post.Body = strings.Replace(post.Body, "%{team_name}", team.AskgodName, -1)
-				post.Body = strings.Replace(post.Body, "%{team_score}", fmt.Sprintf("%d", askgodScores[team.AskgodID]), -1)
+				body := post.Body
+				body = strings.Replace(body, "%{team_name}", team.AskgodName, -1)
+				body = strings.Replace(body, "%{team_score}", fmt.Sprintf("%d", askgodScores[team.AskgodID]), -1)
 
 				// Process template variables
 				r := regexp.MustCompile(`%\{(\w+)\}`)
-				post.Body = r.ReplaceAllStringFunc(post.Body, func(p string) string {
+				body = r.ReplaceAllStringFunc(body, func(p string) string {
 					return post.Variables[p[2:len(p)-1]][team.AskgodID]
 				})
 
 				if post.Type == "topic" {
-					err := s.discourseCreateTopic(team.DiscourseName, team.AskgodID, apiUser, apiKey, name, team.DiscourseCategoryID, post.Title, post.Body)
+					err := s.discourseCreateTopic(team.DiscourseName, team.AskgodID, apiUser, apiKey, name, team.DiscourseCategoryID, post.Title, body)
 					if err != nil {
 						return err
 					}
 				} else if post.Type == "post" {
 					postIDs := dbTeamPosts[team.AskgodID][post.Topic]
 					for _, id := range postIDs {
-						err := s.discourseCreatePost(team.DiscourseName, team.AskgodID, apiUser, apiKey, name, id, post.Body)
+						err := s.discourseCreatePost(team.DiscourseName, team.AskgodID, apiUser, apiKey, name, id, body)
 						if err != nil {
 							return err
 						}
