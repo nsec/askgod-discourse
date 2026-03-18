@@ -104,6 +104,8 @@ type post struct {
 type postTrigger struct {
 	Type      string `yaml:"type"`
 	Tag       string `yaml:"tag"`
+	Tags      []string `yaml:"tags"`
+	Threshold int64  `yaml:"threshold"`
 	Value     int64  `yaml:"value"`
 	After     string `yaml:"after"`
 	AfterTime time.Time
@@ -227,6 +229,33 @@ func (s *syncer) syncPosts() error {
 						} else {
 							if !int64InSlice(team.AskgodID, askgodFlags[post.Trigger.Tag]) {
 								// Not scored that yet
+								continue
+							}
+						}
+						teams = append(teams, team)
+					}
+				} else if post.Trigger.Type == "multiFlag" {
+					for _, team := range dbTeams {
+						if post.Trigger.Tags == nil || len(post.Trigger.Tags) == 0 {
+							if askgodScores[team.AskgodID] == 0 {
+								// Hasn't sent a flag yet
+								continue
+							}
+						} else {
+							// Count number of relevant flags sent
+							var nTriggers int64 = 0
+							for _, tag := range post.Trigger.Tags {
+								if int64InSlice(team.AskgodID, askgodFlags[tag]) {
+									nTriggers++
+								}
+							}
+							// If the threshold is not specified, it requires all flags
+							if post.Trigger.Threshold == 0 {
+								post.Trigger.Threshold = int64(len(post.Trigger.Tags))
+							}
+
+							// Check if threshold is met
+							if nTriggers < post.Trigger.Threshold {
 								continue
 							}
 						}
