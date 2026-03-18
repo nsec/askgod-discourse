@@ -102,11 +102,32 @@ type post struct {
 }
 
 type postTrigger struct {
-	Type      string `yaml:"type"`
-	Tag       string `yaml:"tag"`
-	Value     int64  `yaml:"value"`
-	After     string `yaml:"after"`
+	Type      string  `yaml:"type"`
+	Tag       tagType `yaml:"tag"`
+	Threshold int64   `yaml:"threshold"`
+	Value     int64   `yaml:"value"`
+	After     string  `yaml:"after"`
 	AfterTime time.Time
+}
+
+type tagType []string
+
+func (t *tagType) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// Try unmarshalling as a single string first
+	var single string
+	if err := unmarshal(&single); err == nil {
+		*t = tagType{single}
+		return nil
+	}
+
+	// Fall back to unmarshalling as a string slice
+	var multiple []string
+	if err := unmarshal(&multiple); err == nil {
+		*t = tagType(multiple)
+		return nil
+	}
+
+	return fmt.Errorf("tag must be a string or a list of strings")
 }
 
 type postAPI struct {
@@ -219,17 +240,31 @@ func (s *syncer) syncPosts() error {
 					teams = dbTeams
 				} else if post.Trigger.Type == "flag" {
 					for _, team := range dbTeams {
-						if post.Trigger.Tag == "" {
+						if len(post.Trigger.Tag) == 0 {
 							if askgodScores[team.AskgodID] == 0 {
 								// Hasn't sent a flag yet
 								continue
 							}
 						} else {
-							if !int64InSlice(team.AskgodID, askgodFlags[post.Trigger.Tag]) {
-								// Not scored that yet
+							// Count number of relevant flags sent
+							var nTriggers int64 = 0
+							for _, tag := range post.Trigger.Tag {
+								if int64InSlice(team.AskgodID, askgodFlags[tag]) {
+									nTriggers++
+								}
+							}
+
+							// If the threshold is not specified, it requires all flags
+							if post.Trigger.Threshold == 0 {
+								post.Trigger.Threshold = int64(len(post.Trigger.Tag))
+							}
+
+							// Check if threshold is met
+							if nTriggers < post.Trigger.Threshold {
 								continue
 							}
 						}
+
 						teams = append(teams, team)
 					}
 				} else if post.Trigger.Type == "score" {
