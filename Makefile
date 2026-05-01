@@ -15,10 +15,10 @@ macos:
 	GOOS=macos GOARCH=amd64 go get -d -v -x ./cmd/askgod-discourse
 	cd bin/macos ; GOOS=darwin GOARCH=amd64 go build ../../cmd/askgod-discourse
 
+update-gomod:
+	go get -t -v -u ./...
+	go mod tidy --go=1.25.0
+	go get toolchain@none
+
 check:
-	go get -t -v -d -u ./...
-	go mod tidy
-	golint ./...
-	go vet ./...
-	go fmt ./...
-	gofmt -s -w ./
+	golangci-lint run
