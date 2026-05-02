@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"slices"
 	"sync"
@@ -65,13 +66,13 @@ func (s *syncer) dbSetup() error {
 	s.db.SetMaxOpenConns(1)
 
 	// Test the connection
-	err = s.db.Ping()
+	err = s.db.PingContext(context.Background())
 	if err != nil {
 		return err
 	}
 
 	// Create the DB schema (if needed)
-	_, err = s.db.Exec(schema)
+	_, err = s.db.ExecContext(context.Background(), schema)
 	if err != nil {
 		return err
 	}
@@ -87,7 +88,7 @@ func (s *syncer) dbGetTeams() ([]dbTeam, error) {
 	resp := []dbTeam{}
 
 	// Query all the teams from the database
-	rows, err := s.db.Query("SELECT id, askgod_id, askgod_name, discourse_name, discourse_group_id, discourse_category_id FROM teams ORDER BY id ASC;")
+	rows, err := s.db.QueryContext(context.Background(), "SELECT id, askgod_id, askgod_name, discourse_name, discourse_group_id, discourse_category_id FROM teams ORDER BY id ASC;")
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +117,7 @@ func (s *syncer) dbGetTeams() ([]dbTeam, error) {
 
 func (s *syncer) dbCreateTeam(askgodID int64, askgodName string, discourseName string, discourseGroupID int64, discourseCategoryID int64) error {
 	// Create a team DB entry
-	_, err := s.db.Exec("INSERT INTO teams (askgod_id, askgod_name, discourse_name, discourse_group_id, discourse_category_id) VALUES (?, ?, ?, ?, ?);",
+	_, err := s.db.ExecContext(context.Background(), "INSERT INTO teams (askgod_id, askgod_name, discourse_name, discourse_group_id, discourse_category_id) VALUES (?, ?, ?, ?, ?);",
 		askgodID, askgodName, discourseName, discourseGroupID, discourseCategoryID)
 	if err != nil {
 		return err
@@ -127,7 +128,7 @@ func (s *syncer) dbCreateTeam(askgodID int64, askgodName string, discourseName s
 
 func (s *syncer) dbRenameTeam(discourseGroupID int64, askgodName string) error {
 	// Change the askgod name on record
-	_, err := s.db.Exec("UPDATE teams SET askgod_name=? WHERE discourse_group_id=?;", askgodName, discourseGroupID)
+	_, err := s.db.ExecContext(context.Background(), "UPDATE teams SET askgod_name=? WHERE discourse_group_id=?;", askgodName, discourseGroupID)
 	if err != nil {
 		return err
 	}
@@ -137,7 +138,7 @@ func (s *syncer) dbRenameTeam(discourseGroupID int64, askgodName string) error {
 
 func (s *syncer) dbDeleteTeam(discourseName string, discourseGroupID int64, discourseCategoryID int64) error {
 	// Delete a team DB entry
-	_, err := s.db.Exec("DELETE FROM teams WHERE discourse_name=? AND discourse_group_id=? AND discourse_category_id=?;", discourseName, discourseGroupID, discourseCategoryID)
+	_, err := s.db.ExecContext(context.Background(), "DELETE FROM teams WHERE discourse_name=? AND discourse_group_id=? AND discourse_category_id=?;", discourseName, discourseGroupID, discourseCategoryID)
 	if err != nil {
 		return err
 	}
@@ -147,7 +148,7 @@ func (s *syncer) dbDeleteTeam(discourseName string, discourseGroupID int64, disc
 
 func (s *syncer) dbDeletePost(discoursePostID int64) error {
 	// Delete a team DB entry
-	_, err := s.db.Exec("DELETE FROM posts WHERE discourse_post_id=?;", discoursePostID)
+	_, err := s.db.ExecContext(context.Background(), "DELETE FROM posts WHERE discourse_post_id=?;", discoursePostID)
 	if err != nil {
 		return err
 	}
@@ -160,7 +161,7 @@ func (s *syncer) dbGetTeamPosts() (map[int64]map[string][]int64, error) {
 	resp := map[int64]map[string][]int64{}
 
 	// Fetch the needed data
-	rows, err := s.db.Query("SELECT teams.askgod_id, posts.name, posts.discourse_post_id FROM posts LEFT JOIN teams ON teams.id=posts.team_id;")
+	rows, err := s.db.QueryContext(context.Background(), "SELECT teams.askgod_id, posts.name, posts.discourse_post_id FROM posts LEFT JOIN teams ON teams.id=posts.team_id;")
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +197,7 @@ func (s *syncer) dbGetTeamPosts() (map[int64]map[string][]int64, error) {
 }
 
 func (s *syncer) dbCreatePost(askgodID int64, postName string, postID int64) error {
-	_, err := s.db.Exec("INSERT INTO posts (team_id, name, discourse_post_id) VALUES ((SELECT id FROM teams WHERE askgod_id=?), ?, ?);",
+	_, err := s.db.ExecContext(context.Background(), "INSERT INTO posts (team_id, name, discourse_post_id) VALUES ((SELECT id FROM teams WHERE askgod_id=?), ?, ?);",
 		askgodID, postName, postID)
 	if err != nil {
 		return err
