@@ -24,12 +24,13 @@ func (s *syncer) getClient(server string, serverCert string) (*http.Client, erro
 	}
 
 	var transport *http.Transport
-	if u.Scheme == "http" {
+	switch u.Scheme {
+	case "http":
 		// Basic transport for clear-text HTTP
 		transport = &http.Transport{
 			DisableKeepAlives: true,
 		}
-	} else if u.Scheme == "https" {
+	case "https":
 		// Be picky on our cipher list
 		tlsConfig := &tls.Config{
 			MinVersion: tls.VersionTLS13,
@@ -60,7 +61,7 @@ func (s *syncer) getClient(server string, serverCert string) (*http.Client, erro
 			TLSClientConfig:   tlsConfig,
 			DisableKeepAlives: true,
 		}
-	} else {
+	default:
 		return nil, fmt.Errorf("Unsupported server URL: %s", server)
 	}
 
@@ -123,13 +124,14 @@ func (s *syncer) queryStruct(server string, method string, path string, data int
 	// Server-specific configuration
 	var srv *http.Client
 	var url string
-	if server == "askgod" {
+	switch server {
+	case "askgod":
 		srv = s.httpAskgod
 		url = fmt.Sprintf("%s/1.0%s", s.config.AskgodURL, path)
-	} else if server == "discourse" {
+	case "discourse":
 		srv = s.httpDiscourse
 		url = fmt.Sprintf("%s%s", s.config.DiscourseURL, path)
-	} else {
+	default:
 		return fmt.Errorf("Unknown server: %s", server)
 	}
 

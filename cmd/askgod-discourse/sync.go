@@ -209,7 +209,8 @@ func (s *syncer) syncPosts() error {
 
 			// Validate the trigger
 			if post.Trigger != nil {
-				if post.Trigger.Type == "timer" {
+				switch post.Trigger.Type {
+				case "timer":
 					if post.Trigger.AfterTime.Unix() > time.Now().Unix() {
 						// Not time yet
 						continue
@@ -217,7 +218,7 @@ func (s *syncer) syncPosts() error {
 
 					// If it's time, send to everyone
 					teams = dbTeams
-				} else if post.Trigger.Type == "flag" {
+				case "flag":
 					for _, team := range dbTeams {
 						if post.Trigger.Tag == "" {
 							if askgodScores[team.AskgodID] == 0 {
@@ -232,7 +233,7 @@ func (s *syncer) syncPosts() error {
 						}
 						teams = append(teams, team)
 					}
-				} else if post.Trigger.Type == "score" {
+				case "score":
 					for _, team := range dbTeams {
 						if askgodScores[team.AskgodID] < post.Trigger.Value {
 							// Not there yet
@@ -265,8 +266,8 @@ func (s *syncer) syncPosts() error {
 				}
 
 				body := post.Body
-				body = strings.Replace(body, "%{team_name}", team.AskgodName, -1)
-				body = strings.Replace(body, "%{team_score}", fmt.Sprintf("%d", askgodScores[team.AskgodID]), -1)
+				body = strings.ReplaceAll(body, "%{team_name}", team.AskgodName)
+				body = strings.ReplaceAll(body, "%{team_score}", fmt.Sprintf("%d", askgodScores[team.AskgodID]))
 
 				// Process template variables
 				r := regexp.MustCompile(`%\{(\w+)\}`)
