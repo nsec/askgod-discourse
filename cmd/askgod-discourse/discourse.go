@@ -79,7 +79,7 @@ func (s *syncer) discourseGetGroup(name string) (*discourseGroup, error) {
 }
 
 func (s *syncer) discourseCreateGroup(name string, fullName string) (int64, error) {
-	title := ""
+	var title string
 	if fullName == "" {
 		fullName = name
 		title = fmt.Sprintf("Member of %s", fullName)
@@ -113,7 +113,7 @@ func (s *syncer) discourseDeleteGroup(id int64) error {
 }
 
 func (s *syncer) discourseUpdateGroup(id int64, name string, fullName string) error {
-	title := ""
+	var title string
 	if fullName == "" {
 		fullName = name
 		title = fmt.Sprintf("Member of %s", fullName)
