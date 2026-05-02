@@ -98,12 +98,16 @@ func (s *syncer) websocket(server string, path string) (*websocket.Conn, error) 
 	}
 
 	// Establish the connection
-	conn, _, err := dialer.Dial(url, nil)
+	conn, resp, err := dialer.Dial(url, nil)
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
-	return conn, err
+	return conn, nil
 }
 
 type queryArgs struct {
