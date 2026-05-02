@@ -32,10 +32,6 @@ type discourseGroup struct {
 	Name string `json:"name"`
 }
 
-type discourseGroups struct {
-	Groups []discourseGroup `json:"groups"`
-}
-
 type discourseGroupPost struct {
 	Name         string `json:"name,omitempty"`
 	FullName     string `json:"full_name,omitempty"`
