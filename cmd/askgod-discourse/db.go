@@ -2,6 +2,8 @@ package main
 
 import (
 	"database/sql"
+	"slices"
+	"sync"
 
 	"github.com/mattn/go-sqlite3"
 )
@@ -39,13 +41,17 @@ func enableForeignKeys(conn *sqlite3.SQLiteConn) error {
 	return err
 }
 
-func init() {
-	sql.Register("sqlite3_with_fk", &sqlite3.SQLiteDriver{ConnectHook: enableForeignKeys})
-}
+var registerSQLiteDriver = sync.OnceFunc(func() {
+	if !slices.Contains(sql.Drivers(), "sqlite3_with_fk") {
+		sql.Register("sqlite3_with_fk", &sqlite3.SQLiteDriver{ConnectHook: enableForeignKeys})
+	}
+})
 
 // Connect sets up the database connection and returns a DB struct
 func (s *syncer) dbSetup() error {
 	s.logger.Info("Connecting to the database")
+
+	registerSQLiteDriver()
 
 	sqlDB, err := sql.Open("sqlite3_with_fk", s.config.Database)
 	if err != nil {
