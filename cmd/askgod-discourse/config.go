@@ -31,14 +31,14 @@ func parseConfig(path string) (*config, error) {
 	// Read the file's content
 	content, err := ioutil.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to read file content: %v", err)
+		return nil, fmt.Errorf("Failed to read file content: %w", err)
 	}
 
 	// Parse the yaml file
 	config := config{}
 	err = yaml.Unmarshal(content, &config)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse yaml: %v", err)
+		return nil, fmt.Errorf("Failed to parse yaml: %w", err)
 	}
 
 	return &config, nil

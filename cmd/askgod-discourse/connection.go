@@ -43,7 +43,7 @@ func (s *syncer) getClient(server string, serverCert string) (*http.Client, erro
 
 			cert, err := x509.ParseCertificate(certBlock.Bytes)
 			if err != nil {
-				return nil, fmt.Errorf("Failed to parse pinned certificate: %v", err)
+				return nil, fmt.Errorf("Failed to parse pinned certificate: %w", err)
 			}
 
 			caCertPool := tlsConfig.RootCAs
