@@ -166,7 +166,10 @@ func (s *syncer) discourseDeleteCategory(id int64, name string) error {
 	}
 
 	for _, topic := range topics {
-		s.discourseDeleteTopic(topic)
+		err := s.discourseDeleteTopic(topic)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = s.queryStruct("discourse", "DELETE", fmt.Sprintf("/categories/%d", id), nil, nil, nil)

@@ -8,7 +8,11 @@ import (
 
 func cmdDaemon(ctx *cli.Context) error {
 	if ctx.NArg() == 0 {
-		cli.ShowAppHelp(ctx)
+		err := cli.ShowAppHelp(ctx)
+		if err != nil {
+			return err
+		}
+
 		return fmt.Errorf("Missing required arguments")
 	}
 
