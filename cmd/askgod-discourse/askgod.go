@@ -92,8 +92,7 @@ func (s *syncer) askgodTeamForIP(ipStr string) (*api.AdminTeam, error) {
 		}
 
 		// Teams can have multiple subnets
-		subnets := strings.Split(team.Subnets, ",")
-		for _, subnet := range subnets {
+		for subnet := range strings.SplitSeq(team.Subnets, ",") {
 			subnet = strings.TrimSpace(subnet)
 
 			// Parse the subnet

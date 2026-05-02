@@ -84,8 +84,9 @@ func (s *syncer) websocket(server string, path string) (*websocket.Conn, error) 
 		return nil, fmt.Errorf("Unknown server: %s", server)
 	}
 
-	if strings.HasPrefix(url, "https://") {
-		url = fmt.Sprintf("wss://%s", strings.TrimPrefix(url, "https://"))
+	rest, ok := strings.CutPrefix(url, "https://")
+	if ok {
+		url = fmt.Sprintf("wss://%s", rest)
 	} else {
 		url = fmt.Sprintf("ws://%s", strings.TrimPrefix(url, "http://"))
 	}
