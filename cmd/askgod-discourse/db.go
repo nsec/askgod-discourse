@@ -48,7 +48,7 @@ var registerSQLiteDriver = sync.OnceFunc(func() {
 	}
 })
 
-// Connect sets up the database connection and returns a DB struct
+// Connect sets up the database connection and returns a DB struct.
 func (s *syncer) dbSetup() error {
 	s.logger.Info("Connecting to the database")
 

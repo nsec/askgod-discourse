@@ -8,7 +8,7 @@ import (
 	"github.com/inconshreveable/log15"
 )
 
-// Structs
+// Structs.
 type discourseUser struct {
 	ID                    int64  `json:"id"`
 	Username              string `json:"username"`
@@ -39,7 +39,7 @@ type discourseGroupPost struct {
 	Title        string `json:"title,omitempty"`
 }
 
-// Users
+// Users.
 func (s *syncer) discourseGetPendingUsers() ([]discourseUser, error) {
 	users := []discourseUser{}
 
@@ -62,7 +62,7 @@ func (s *syncer) discourseGetUser(id int64) (*discourseUser, error) {
 	return &user, nil
 }
 
-// Groups
+// Groups.
 func (s *syncer) discourseGetGroup(name string) (*discourseGroup, error) {
 	// For some reason the response is wrapped
 	group := map[string]discourseGroup{}
@@ -134,7 +134,7 @@ func (s *syncer) discourseUpdateGroup(id int64, name string, fullName string) er
 	return nil
 }
 
-// Categories
+// Categories.
 func (s *syncer) discourseCreateCategory(name string, groups []string) (int64, error) {
 	category := discourseCategoryPost{
 		Name:           name,
@@ -180,7 +180,7 @@ func (s *syncer) discourseDeleteCategory(id int64, name string) error {
 	return nil
 }
 
-// Topics
+// Topics.
 func (s *syncer) discourseGetTopics(id int64) ([]int64, error) {
 	var resp interface{}
 	err := s.queryStruct("discourse", "GET", fmt.Sprintf("/c/%d.json", id), nil, &resp, nil)
@@ -236,7 +236,7 @@ func (s *syncer) discourseDeleteTopic(id int64) error {
 	return nil
 }
 
-// Posts
+// Posts.
 func (s *syncer) discourseCreatePostAs(topic int64, body string, apiUser string, apiKey string) (int64, error) {
 	post := map[string]interface{}{
 		"topic_id": topic,
@@ -261,7 +261,7 @@ func (s *syncer) discourseCreatePostAs(topic int64, body string, apiUser string,
 	return int64(resp.(map[string]interface{})["id"].(float64)), nil
 }
 
-// User setup
+// User setup.
 func (s *syncer) discourseSetupUser(user discourseUser, group string) error {
 	// Setup the groups
 	adminGroup, err := s.discourseGetGroup(group)
@@ -334,7 +334,7 @@ func (s *syncer) discourseProcessNewUsers() error {
 	return nil
 }
 
-// Team setup
+// Team setup.
 func (s *syncer) discourseCreateTeam(name string, id int64, title string) error {
 	// Create the group
 	groupID, err := s.discourseCreateGroup(name, title)
