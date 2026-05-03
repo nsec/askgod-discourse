@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -102,11 +103,38 @@ type post struct {
 }
 
 type postTrigger struct {
-	Type      string `yaml:"type"`
-	Tag       string `yaml:"tag"`
-	Value     int64  `yaml:"value"`
-	After     string `yaml:"after"`
+	Type      string  `yaml:"type"`
+	Tag       tagType `yaml:"tag"`
+	Threshold int64   `yaml:"threshold"`
+	Value     int64   `yaml:"value"`
+	After     string  `yaml:"after"`
 	AfterTime time.Time
+}
+
+type tagType []string
+
+func (t *tagType) UnmarshalYAML(unmarshal func(any) error) error {
+	// Try unmarshalling as a single string first
+	var single string
+
+	err := unmarshal(&single)
+	if err == nil {
+		*t = tagType{single}
+
+		return nil
+	}
+
+	// Fall back to unmarshalling as a string slice
+	var multiple []string
+
+	err = unmarshal(&multiple)
+	if err == nil {
+		*t = tagType(multiple)
+
+		return nil
+	}
+
+	return errors.New("tag must be a string or a list of strings")
 }
 
 type postAPI struct {
@@ -285,13 +313,30 @@ func selectTriggerTeams(p post, pctx *postContext) ([]dbTeam, error) {
 
 		return pctx.dbTeams, nil
 	case "flag":
+		// If the threshold is not specified, it requires all flags
+		threshold := p.Trigger.Threshold
+		if threshold == 0 {
+			threshold = int64(len(p.Trigger.Tag))
+		}
+
 		for _, team := range pctx.dbTeams {
-			if p.Trigger.Tag == "" {
+			if len(p.Trigger.Tag) == 0 {
 				if pctx.askgodScores[team.AskgodID] == 0 {
 					continue
 				}
-			} else if !int64InSlice(team.AskgodID, pctx.askgodFlags[p.Trigger.Tag]) {
-				continue
+			} else {
+				// Count number of relevant flags sent
+				var nTriggers int64
+
+				for _, tag := range p.Trigger.Tag {
+					if int64InSlice(team.AskgodID, pctx.askgodFlags[tag]) {
+						nTriggers++
+					}
+				}
+
+				if nTriggers < threshold {
+					continue
+				}
 			}
 
 			teams = append(teams, team)
