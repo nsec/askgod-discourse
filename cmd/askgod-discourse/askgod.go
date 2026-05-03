@@ -100,6 +100,7 @@ func (s *syncer) askgodTeamForIP(ipStr string) (*api.AdminTeam, error) {
 			_, netSubnet, err := net.ParseCIDR(subnet)
 			if err != nil {
 				s.logger.Error("Bad team subnet", log15.Ctx{"error": err, "subnet": subnet})
+
 				continue
 			}
 

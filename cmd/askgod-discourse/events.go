@@ -23,6 +23,7 @@ func (s *syncer) setupEvents() (chan error, error) {
 			if err != nil {
 				// Got disconnected
 				chError <- err
+
 				return
 			}
 
@@ -30,6 +31,7 @@ func (s *syncer) setupEvents() (chan error, error) {
 			err = json.Unmarshal(data, &event)
 			if err != nil {
 				s.logger.Error("Bad askgod event", log15.Ctx{"error": err})
+
 				continue
 			}
 
@@ -41,6 +43,7 @@ func (s *syncer) setupEvents() (chan error, error) {
 				err = json.Unmarshal(event.Metadata, &entry)
 				if err != nil {
 					s.logger.Error("Bad askgod flag event", log15.Ctx{"error": err})
+
 					continue
 				}
 
@@ -54,6 +57,7 @@ func (s *syncer) setupEvents() (chan error, error) {
 				err = s.syncPosts()
 				if err != nil {
 					s.logger.Error("Failed to sync teams", log15.Ctx{"error": err})
+
 					continue
 				}
 			} else if event.Type == "timeline" {
@@ -62,6 +66,7 @@ func (s *syncer) setupEvents() (chan error, error) {
 				err = json.Unmarshal(event.Metadata, &entry)
 				if err != nil {
 					s.logger.Error("Bad askgod timeline event", log15.Ctx{"error": err})
+
 					continue
 				}
 
@@ -75,6 +80,7 @@ func (s *syncer) setupEvents() (chan error, error) {
 				err = s.syncTeams()
 				if err != nil {
 					s.logger.Error("Failed to sync teams", log15.Ctx{"error": err})
+
 					continue
 				}
 			}

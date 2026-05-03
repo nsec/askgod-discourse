@@ -39,6 +39,7 @@ type dbTeam struct {
 
 func enableForeignKeys(conn *sqlite3.SQLiteConn) error {
 	_, err := conn.Exec("PRAGMA foreign_keys=ON;", nil)
+
 	return err
 }
 

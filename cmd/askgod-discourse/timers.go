@@ -19,6 +19,7 @@ func (s *syncer) setupTimers() (chan error, error) {
 			err := s.discourseProcessNewUsers()
 			if err != nil {
 				s.logger.Error("Failed to process pending users", log15.Ctx{"error": err})
+
 				continue
 			}
 
@@ -27,6 +28,7 @@ func (s *syncer) setupTimers() (chan error, error) {
 			err = s.syncPosts()
 			if err != nil {
 				s.logger.Error("Failed to process scheduled posts", log15.Ctx{"error": err})
+
 				continue
 			}
 		}

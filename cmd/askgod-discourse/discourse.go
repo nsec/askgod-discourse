@@ -251,6 +251,7 @@ func (s *syncer) discourseDeleteTopic(id int64) error {
 	}
 
 	s.logger.Info("Deleted post", log15.Ctx{"id": id})
+
 	return nil
 }
 
@@ -332,6 +333,7 @@ func (s *syncer) discourseProcessNewUsers() error {
 		adminUser, err := s.discourseGetUser(user.ID)
 		if err != nil {
 			s.logger.Error("Failed to get full user record", log15.Ctx{"user": user.Username, "error": err})
+
 			continue
 		}
 
@@ -339,6 +341,7 @@ func (s *syncer) discourseProcessNewUsers() error {
 		team, err := s.askgodTeamForIP(adminUser.RegistrationIPAddress)
 		if err != nil {
 			s.logger.Error("Failed to find team for IP", log15.Ctx{"user": adminUser.Username, "ip": adminUser.RegistrationIPAddress, "error": err})
+
 			continue
 		}
 
@@ -346,6 +349,7 @@ func (s *syncer) discourseProcessNewUsers() error {
 		err = s.discourseSetupUser(*adminUser, team.Tags["discourse"])
 		if err != nil {
 			s.logger.Error("Failed to setup new user", log15.Ctx{"user": adminUser.Username, "error": err})
+
 			continue
 		}
 
@@ -376,6 +380,7 @@ func (s *syncer) discourseCreateTeam(name string, id int64, title string) error 
 	}
 
 	s.logger.Info("Created new team", log15.Ctx{"name": name, "title": title})
+
 	return nil
 }
 
@@ -393,6 +398,7 @@ func (s *syncer) discourseRenameTeam(name string, groupID int64, title string) e
 	}
 
 	s.logger.Info("Renamed team", log15.Ctx{"name": name, "title": title})
+
 	return nil
 }
 
@@ -416,6 +422,7 @@ func (s *syncer) discourseDeleteTeam(name string, groupID int64, categoryID int6
 	}
 
 	s.logger.Info("Deleted team", log15.Ctx{"name": name})
+
 	return nil
 }
 
@@ -424,6 +431,7 @@ func (s *syncer) discourseCreateTopic(name string, id int64, apiUser string, api
 	topicID, err := s.discourseCreateTopicAs(postCategory, postTitle, postBody, apiUser, apiKey)
 	if err != nil {
 		s.logger.Error("Failed to create topic", log15.Ctx{"err": err, "team": name, "name": postName, "id": topicID})
+
 		return err
 	}
 
@@ -431,10 +439,12 @@ func (s *syncer) discourseCreateTopic(name string, id int64, apiUser string, api
 	err = s.dbCreatePost(id, postName, topicID)
 	if err != nil {
 		s.logger.Error("Failed to create topic", log15.Ctx{"err": err, "team": name, "name": postName, "id": topicID})
+
 		return err
 	}
 
 	s.logger.Info("New topic", log15.Ctx{"team": name, "name": postName, "id": topicID})
+
 	return nil
 }
 
@@ -443,6 +453,7 @@ func (s *syncer) discourseCreatePost(name string, id int64, apiUser string, apiK
 	postID, err := s.discourseCreatePostAs(postID, postBody, apiUser, apiKey)
 	if err != nil {
 		s.logger.Error("Failed to create post", log15.Ctx{"err": err, "team": name, "name": postName, "id": postID})
+
 		return err
 	}
 
@@ -450,9 +461,11 @@ func (s *syncer) discourseCreatePost(name string, id int64, apiUser string, apiK
 	err = s.dbCreatePost(id, postName, postID)
 	if err != nil {
 		s.logger.Error("Failed to create post", log15.Ctx{"err": err, "team": name, "name": postName, "id": postID})
+
 		return err
 	}
 
 	s.logger.Info("New post", log15.Ctx{"team": name, "name": postName, "id": postID})
+
 	return nil
 }
