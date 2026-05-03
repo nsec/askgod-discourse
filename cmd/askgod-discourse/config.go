@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"gopkg.in/yaml.v2"
 )
@@ -29,16 +29,16 @@ type config struct {
 
 func parseConfig(path string) (*config, error) {
 	// Read the file's content
-	content, err := ioutil.ReadFile(path)
+	content, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to read file content: %w", err)
+		return nil, fmt.Errorf("failed to read file content: %w", err)
 	}
 
 	// Parse the yaml file
 	config := config{}
 	err = yaml.Unmarshal(content, &config)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse yaml: %w", err)
+		return nil, fmt.Errorf("failed to parse yaml: %w", err)
 	}
 
 	return &config, nil

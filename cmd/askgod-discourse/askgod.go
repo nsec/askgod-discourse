@@ -76,7 +76,7 @@ func (s *syncer) askgodTeamForIP(ipStr string) (*api.AdminTeam, error) {
 	// Parse the IP
 	ip := net.ParseIP(ipStr)
 	if ip == nil {
-		return nil, fmt.Errorf("Bad IP: %s", ipStr)
+		return nil, fmt.Errorf("bad IP: %s", ipStr)
 	}
 
 	// Get all the teams

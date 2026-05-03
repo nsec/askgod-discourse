@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -45,7 +45,7 @@ func (s *syncer) getClient(server string, serverCert string) (*http.Client, erro
 
 			cert, err := x509.ParseCertificate(certBlock.Bytes)
 			if err != nil {
-				return nil, fmt.Errorf("Failed to parse pinned certificate: %w", err)
+				return nil, fmt.Errorf("failed to parse pinned certificate: %w", err)
 			}
 
 			caCertPool := tlsConfig.RootCAs
@@ -62,7 +62,7 @@ func (s *syncer) getClient(server string, serverCert string) (*http.Client, erro
 			DisableKeepAlives: true,
 		}
 	default:
-		return nil, fmt.Errorf("Unsupported server URL: %s", server)
+		return nil, fmt.Errorf("unsupported server URL: %s", server)
 	}
 
 	// Create the new HTTP client
@@ -81,7 +81,7 @@ func (s *syncer) websocket(server string, path string) (*websocket.Conn, error) 
 		srv = s.httpAskgod
 		url = fmt.Sprintf("%s/1.0%s", s.config.AskgodURL, path)
 	} else {
-		return nil, fmt.Errorf("Unknown server: %s", server)
+		return nil, fmt.Errorf("unknown server: %s", server)
 	}
 
 	rest, ok := strings.CutPrefix(url, "https://")
@@ -133,7 +133,7 @@ func (s *syncer) queryStruct(server string, method string, path string, data int
 		srv = s.httpDiscourse
 		url = fmt.Sprintf("%s%s", s.config.DiscourseURL, path)
 	default:
-		return fmt.Errorf("Unknown server: %s", server)
+		return fmt.Errorf("unknown server: %s", server)
 	}
 
 	// Get a new HTTP request setup
@@ -199,7 +199,7 @@ func (s *syncer) queryStruct(server string, method string, path string, data int
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		content, err := ioutil.ReadAll(resp.Body)
+		content, err := io.ReadAll(resp.Body)
 		if err == nil && string(content) != "" {
 			return fmt.Errorf("%s", strings.TrimSpace(string(content)))
 		}

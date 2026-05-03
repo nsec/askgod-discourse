@@ -266,7 +266,7 @@ func (s *syncer) discourseSetupUser(user discourseUser, group string) error {
 	// Setup the groups
 	adminGroup, err := s.discourseGetGroup(group)
 	if err != nil {
-		return fmt.Errorf("User group doesn't exist: %s", group)
+		return fmt.Errorf("user group doesn't exist: %s", group)
 	}
 
 	// Add the user to the group

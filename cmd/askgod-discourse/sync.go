@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -146,7 +145,7 @@ func (s *syncer) syncPosts() error {
 	}
 
 	// Enumerate the posts directory
-	files, err := ioutil.ReadDir(s.config.Posts)
+	files, err := os.ReadDir(s.config.Posts)
 	if err != nil {
 		return err
 	}
@@ -161,7 +160,7 @@ func (s *syncer) syncPosts() error {
 		path := filepath.Join(s.config.Posts, file.Name())
 
 		// Read the file
-		content, err := ioutil.ReadFile(path)
+		content, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
@@ -170,7 +169,7 @@ func (s *syncer) syncPosts() error {
 		newPost := post{}
 		err = yaml.Unmarshal(content, &newPost)
 		if err != nil {
-			return fmt.Errorf("Failed to parse '%s': %w", path, err)
+			return fmt.Errorf("failed to parse '%s': %w", path, err)
 		}
 
 		// Convert timestamps
@@ -308,7 +307,7 @@ func (s *syncer) syncPosts() error {
 						}
 					}
 				default:
-					return fmt.Errorf("Invalid type: %s", post.Type)
+					return fmt.Errorf("invalid type: %s", post.Type)
 				}
 			}
 		}
