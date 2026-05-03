@@ -1,14 +1,15 @@
 package main
 
 import (
+	"context"
 	"errors"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
-func cmdDaemon(ctx *cli.Context) error {
-	if ctx.NArg() == 0 {
-		err := cli.ShowAppHelp(ctx)
+func cmdDaemon(ctx context.Context, cmd *cli.Command) error {
+	if cmd.NArg() == 0 {
+		err := cli.ShowAppHelp(cmd)
 		if err != nil {
 			return err
 		}
@@ -17,7 +18,7 @@ func cmdDaemon(ctx *cli.Context) error {
 	}
 
 	// Load configuration
-	s, err := getSyncer(ctx.Args().Get(0))
+	s, err := getSyncer(ctx, cmd.Args().Get(0))
 	if err != nil {
 		return err
 	}

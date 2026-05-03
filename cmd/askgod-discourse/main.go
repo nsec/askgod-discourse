@@ -3,24 +3,25 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 func main() {
-	app := cli.NewApp()
-	app.Name = "askgod-discourse"
-	app.Usage = "CTF scoring system - discourse sync"
-	app.ArgsUsage = "<config>"
-	app.HideVersion = true
-	app.HideHelp = true
-	app.EnableBashCompletion = true
-	app.Action = cmdDaemon
-	app.Usage = "Starts a daemon that processes events as they arrive"
+	cmd := &cli.Command{
+		Name:                  "askgod-discourse",
+		Usage:                 "Starts a daemon that processes events as they arrive",
+		ArgsUsage:             "<config>",
+		HideVersion:           true,
+		HideHelp:              true,
+		EnableShellCompletion: true,
+		Action:                cmdDaemon,
+	}
 
-	err := app.Run(os.Args)
+	err := cmd.Run(context.Background(), os.Args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 	}

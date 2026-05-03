@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"sync"
@@ -9,6 +10,7 @@ import (
 )
 
 type syncer struct {
+	ctx           context.Context //nolint:containedctx // daemon-scoped context shared across all sync operations
 	config        *config
 	logger        log15.Logger
 	httpAskgod    *http.Client
@@ -19,8 +21,8 @@ type syncer struct {
 	teamsLock sync.Mutex
 }
 
-func getSyncer(path string) (*syncer, error) {
-	s := syncer{}
+func getSyncer(ctx context.Context, path string) (*syncer, error) {
+	s := syncer{ctx: ctx}
 
 	// Setup logging
 	s.logger = log15.New()

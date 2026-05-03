@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -152,7 +151,7 @@ func (s *syncer) queryStruct(server string, method string, path string, data any
 		}
 
 		// Some data to be sent along with the request
-		req, err = http.NewRequestWithContext(context.Background(), method, requestURL, &buf)
+		req, err = http.NewRequestWithContext(s.ctx, method, requestURL, &buf)
 		if err != nil {
 			return err
 		}
@@ -176,7 +175,7 @@ func (s *syncer) queryStruct(server string, method string, path string, data any
 		}
 	} else {
 		// No data to be sent along with the request
-		req, err = http.NewRequestWithContext(context.Background(), method, requestURL, nil)
+		req, err = http.NewRequestWithContext(s.ctx, method, requestURL, nil)
 		if err != nil {
 			return err
 		}
