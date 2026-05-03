@@ -19,6 +19,7 @@ func main() {
 	app.EnableBashCompletion = true
 	app.Action = cmdDaemon
 	app.Usage = "Starts a daemon that processes events as they arrive"
+
 	err := app.Run(os.Args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

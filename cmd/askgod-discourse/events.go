@@ -28,6 +28,7 @@ func (s *syncer) setupEvents() (chan error, error) {
 			}
 
 			event := api.Event{}
+
 			err = json.Unmarshal(data, &event)
 			if err != nil {
 				s.logger.Error("Bad askgod event", log15.Ctx{"error": err})
@@ -40,6 +41,7 @@ func (s *syncer) setupEvents() (chan error, error) {
 			if event.Type == "flags" {
 				// Got a flag submission event
 				entry := api.EventFlag{}
+
 				err = json.Unmarshal(event.Metadata, &entry)
 				if err != nil {
 					s.logger.Error("Bad askgod flag event", log15.Ctx{"error": err})
@@ -54,6 +56,7 @@ func (s *syncer) setupEvents() (chan error, error) {
 
 				// Update discourse
 				s.logger.Debug("Askgod triggered posts update")
+
 				err = s.syncPosts()
 				if err != nil {
 					s.logger.Error("Failed to sync teams", log15.Ctx{"error": err})
@@ -63,6 +66,7 @@ func (s *syncer) setupEvents() (chan error, error) {
 			} else if event.Type == "timeline" {
 				// Got a timeline event
 				entry := api.EventTimeline{}
+
 				err = json.Unmarshal(event.Metadata, &entry)
 				if err != nil {
 					s.logger.Error("Bad askgod timeline event", log15.Ctx{"error": err})
@@ -77,6 +81,7 @@ func (s *syncer) setupEvents() (chan error, error) {
 
 				// Update discourse
 				s.logger.Debug("Askgod triggered teams update", log15.Ctx{"type": entry.Type})
+
 				err = s.syncTeams()
 				if err != nil {
 					s.logger.Error("Failed to sync teams", log15.Ctx{"error": err})

@@ -80,6 +80,7 @@ func (s *syncer) discourseGetGroup(name string) (*discourseGroup, error) {
 
 func (s *syncer) discourseCreateGroup(name string, fullName string) (int64, error) {
 	var title string
+
 	if fullName == "" {
 		fullName = name
 		title = "Member of " + fullName
@@ -119,6 +120,7 @@ func (s *syncer) discourseDeleteGroup(id int64) error {
 
 func (s *syncer) discourseUpdateGroup(id int64, name string, fullName string) error {
 	var title string
+
 	if fullName == "" {
 		fullName = name
 		title = "Member of " + fullName
@@ -149,10 +151,12 @@ func (s *syncer) discourseCreateCategory(name string, groups []string) (int64, e
 	}
 
 	permissions := map[string]string{}
+
 	groups = append(groups, s.config.CategoryAccess...)
 	for _, group := range groups {
 		permissions[group] = "1"
 	}
+
 	category.Permissions = permissions
 
 	var resp struct {

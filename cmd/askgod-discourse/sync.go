@@ -222,6 +222,7 @@ func loadPosts(dir string) (map[string]post, error) {
 		}
 
 		newPost := post{}
+
 		err = yaml.Unmarshal(content, &newPost)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse '%s': %w", path, err)
@@ -319,6 +320,7 @@ func (s *syncer) processPostEntries(postType string, pctx *postContext) error {
 		// Sort out API keys
 		apiUser := s.config.DiscourseAPIUser
 		apiKey := s.config.DiscourseAPIKey
+
 		if p.API != nil {
 			apiUser = p.API.User
 			apiKey = p.API.Key
@@ -402,6 +404,7 @@ func (s *syncer) dispatchSubPosts(name string, p post, team dbTeam, apiUser stri
 	for _, subPost := range p.Posts {
 		subAPIUser := apiUser
 		subAPIKey := apiKey
+
 		if subPost.API != nil {
 			subAPIUser = subPost.API.User
 			subAPIKey = subPost.API.Key

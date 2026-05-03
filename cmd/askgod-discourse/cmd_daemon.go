@@ -30,6 +30,7 @@ func cmdDaemon(ctx *cli.Context) error {
 
 	// Setup event handlers
 	s.logger.Info("Setting up events")
+
 	chEvents, err := s.setupEvents()
 	if err != nil {
 		return err
@@ -37,6 +38,7 @@ func cmdDaemon(ctx *cli.Context) error {
 
 	// Setup timers
 	s.logger.Info("Setting up timers")
+
 	chTimers, err := s.setupTimers()
 	if err != nil {
 		return err
@@ -44,18 +46,21 @@ func cmdDaemon(ctx *cli.Context) error {
 
 	// Process backlog
 	s.logger.Info("Running initial team sync")
+
 	err = s.syncTeams()
 	if err != nil {
 		return err
 	}
 
 	s.logger.Info("Running initial posts sync")
+
 	err = s.syncPosts()
 	if err != nil {
 		return err
 	}
 
 	s.logger.Info("Running initial account approval")
+
 	err = s.discourseProcessNewUsers()
 	if err != nil {
 		return err

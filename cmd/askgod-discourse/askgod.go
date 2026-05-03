@@ -13,6 +13,7 @@ import (
 func (s *syncer) askgodGetTeams() ([]api.AdminTeam, error) {
 	// Grab all the teams from askgod
 	teams := []api.AdminTeam{}
+
 	err := s.queryStruct("askgod", "GET", "/teams", nil, &teams, nil)
 	if err != nil {
 		return nil, err
@@ -24,6 +25,7 @@ func (s *syncer) askgodGetTeams() ([]api.AdminTeam, error) {
 func (s *syncer) askgodGetTeamDiscourseFlags() (map[string][]int64, error) {
 	// Get all the flags
 	flags := []api.AdminFlag{}
+
 	err := s.queryStruct("askgod", "GET", "/flags", nil, &flags, nil)
 	if err != nil {
 		return nil, err
@@ -31,6 +33,7 @@ func (s *syncer) askgodGetTeamDiscourseFlags() (map[string][]int64, error) {
 
 	// Get all the scores
 	scores := []api.AdminScore{}
+
 	err = s.queryStruct("askgod", "GET", "/scores", nil, &scores, nil)
 	if err != nil {
 		return nil, err
@@ -45,6 +48,7 @@ func (s *syncer) askgodGetTeamDiscourseFlags() (map[string][]int64, error) {
 		}
 
 		teams := []int64{}
+
 		for _, score := range scores {
 			if score.FlagID == flag.ID {
 				teams = append(teams, score.TeamID)
@@ -60,6 +64,7 @@ func (s *syncer) askgodGetTeamDiscourseFlags() (map[string][]int64, error) {
 func (s *syncer) askgodGetTeamScores() (map[int64]int64, error) {
 	// Grab the scoreboard
 	board := []api.ScoreboardEntry{}
+
 	err := s.queryStruct("askgod", "GET", "/scoreboard", nil, &board, nil)
 	if err != nil {
 		return nil, err

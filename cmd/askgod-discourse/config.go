@@ -36,6 +36,7 @@ func parseConfig(path string) (*config, error) {
 
 	// Parse the yaml file
 	config := config{}
+
 	err = yaml.Unmarshal(content, &config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse yaml: %w", err)

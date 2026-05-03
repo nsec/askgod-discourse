@@ -182,9 +182,11 @@ func (s *syncer) dbGetTeamPosts() (map[int64]map[string][]int64, error) {
 		if resp[teamid] == nil {
 			resp[teamid] = map[string][]int64{}
 		}
+
 		if resp[teamid][name] == nil {
 			resp[teamid][name] = []int64{}
 		}
+
 		resp[teamid][name] = append(resp[teamid][name], postid)
 	}
 

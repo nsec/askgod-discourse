@@ -25,6 +25,7 @@ func (*syncer) getClient(server string, serverCert string) (*http.Client, error)
 	}
 
 	var transport *http.Transport
+
 	switch u.Scheme {
 	case "http":
 		// Basic transport for clear-text HTTP
@@ -121,12 +122,14 @@ type queryArgs struct {
 }
 
 func (s *syncer) queryStruct(server string, method string, path string, data any, target any, args *queryArgs) error {
-	var req *http.Request
-	var err error
+	var (
+		req        *http.Request
+		err        error
+		srv        *http.Client
+		requestURL string
+	)
 
 	// Server-specific configuration
-	var srv *http.Client
-	var requestURL string
 	switch server {
 	case "askgod":
 		srv = s.httpAskgod
@@ -142,6 +145,7 @@ func (s *syncer) queryStruct(server string, method string, path string, data any
 	if data != nil {
 		// Encode the provided data
 		buf := bytes.Buffer{}
+
 		err := json.NewEncoder(&buf).Encode(data)
 		if err != nil {
 			return err
@@ -212,6 +216,7 @@ func (s *syncer) queryStruct(server string, method string, path string, data any
 	// Decode the response
 	if target != nil {
 		decoder := json.NewDecoder(resp.Body)
+
 		err = decoder.Decode(&target)
 		if err != nil {
 			return err
