@@ -170,7 +170,7 @@ func (s *syncer) syncPosts() error {
 		newPost := post{}
 		err = yaml.Unmarshal(content, &newPost)
 		if err != nil {
-			return fmt.Errorf("Failed to parse '%s': %v", path, err)
+			return fmt.Errorf("Failed to parse '%s': %w", path, err)
 		}
 
 		// Convert timestamps
