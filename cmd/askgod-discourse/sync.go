@@ -276,12 +276,13 @@ func (s *syncer) syncPosts() error {
 					return post.Variables[p[2:len(p)-1]][team.AskgodID]
 				})
 
-				if post.Type == "topic" {
+				switch post.Type {
+				case "topic":
 					err := s.discourseCreateTopic(team.DiscourseName, team.AskgodID, apiUser, apiKey, name, team.DiscourseCategoryID, post.Title, body)
 					if err != nil {
 						return err
 					}
-				} else if post.Type == "post" {
+				case "post":
 					postIDs := dbTeamPosts[team.AskgodID][post.Topic]
 					for _, id := range postIDs {
 						err := s.discourseCreatePost(team.DiscourseName, team.AskgodID, apiUser, apiKey, name, id, body)
@@ -289,7 +290,7 @@ func (s *syncer) syncPosts() error {
 							return err
 						}
 					}
-				} else if post.Type == "posts" {
+				case "posts":
 					postIDs := dbTeamPosts[team.AskgodID][post.Topic]
 					for _, subPost := range post.Posts {
 						subApiUser := apiUser
@@ -306,7 +307,7 @@ func (s *syncer) syncPosts() error {
 							}
 						}
 					}
-				} else {
+				default:
 					return fmt.Errorf("Invalid type: %s", post.Type)
 				}
 			}
