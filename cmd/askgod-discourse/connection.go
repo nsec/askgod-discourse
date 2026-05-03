@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,7 +17,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func (s *syncer) getClient(server string, serverCert string) (*http.Client, error) {
+func (*syncer) getClient(server string, serverCert string) (*http.Client, error) {
 	// Parse the server URL
 	u, err := url.ParseRequestURI(server)
 	if err != nil {
@@ -40,7 +41,7 @@ func (s *syncer) getClient(server string, serverCert string) (*http.Client, erro
 		if serverCert != "" {
 			certBlock, _ := pem.Decode([]byte(serverCert))
 			if certBlock == nil {
-				return nil, fmt.Errorf("Failed to load pinned certificate")
+				return nil, errors.New("failed to load pinned certificate")
 			}
 
 			cert, err := x509.ParseCertificate(certBlock.Bytes)
@@ -75,24 +76,25 @@ func (s *syncer) getClient(server string, serverCert string) (*http.Client, erro
 
 func (s *syncer) websocket(server string, path string) (*websocket.Conn, error) {
 	// Server-specific configuration
-	var srv *http.Client
-	var url string
-	if server == "askgod" {
-		srv = s.httpAskgod
-		url = fmt.Sprintf("%s/1.0%s", s.config.AskgodURL, path)
-	} else {
+	if server != "askgod" {
 		return nil, fmt.Errorf("unknown server: %s", server)
 	}
 
-	rest, ok := strings.CutPrefix(url, "https://")
+	srv := s.httpAskgod
+	requestURL := fmt.Sprintf("%s/1.0%s", s.config.AskgodURL, path)
+
+	rest, ok := strings.CutPrefix(requestURL, "https://")
 	if ok {
-		url = "wss://" + rest
+		requestURL = "wss://" + rest
 	} else {
-		url = "ws://" + strings.TrimPrefix(url, "http://")
+		requestURL = "ws://" + strings.TrimPrefix(requestURL, "http://")
 	}
 
 	// Grab the http transport handler
-	httpTransport := srv.Transport.(*http.Transport)
+	httpTransport, ok := srv.Transport.(*http.Transport)
+	if !ok {
+		return nil, errors.New("unexpected http client transport type")
+	}
 
 	// Setup a new websocket dialer based on it
 	dialer := websocket.Dialer{
@@ -101,7 +103,7 @@ func (s *syncer) websocket(server string, path string) (*websocket.Conn, error) 
 	}
 
 	// Establish the connection
-	conn, resp, err := dialer.Dial(url, nil)
+	conn, resp, err := dialer.Dial(requestURL, nil)
 	if resp != nil {
 		_ = resp.Body.Close()
 	}
@@ -118,20 +120,20 @@ type queryArgs struct {
 	discourseKey  string
 }
 
-func (s *syncer) queryStruct(server string, method string, path string, data interface{}, target interface{}, args *queryArgs) error {
+func (s *syncer) queryStruct(server string, method string, path string, data any, target any, args *queryArgs) error {
 	var req *http.Request
 	var err error
 
 	// Server-specific configuration
 	var srv *http.Client
-	var url string
+	var requestURL string
 	switch server {
 	case "askgod":
 		srv = s.httpAskgod
-		url = fmt.Sprintf("%s/1.0%s", s.config.AskgodURL, path)
+		requestURL = fmt.Sprintf("%s/1.0%s", s.config.AskgodURL, path)
 	case "discourse":
 		srv = s.httpDiscourse
-		url = fmt.Sprintf("%s%s", s.config.DiscourseURL, path)
+		requestURL = fmt.Sprintf("%s%s", s.config.DiscourseURL, path)
 	default:
 		return fmt.Errorf("unknown server: %s", server)
 	}
@@ -146,7 +148,7 @@ func (s *syncer) queryStruct(server string, method string, path string, data int
 		}
 
 		// Some data to be sent along with the request
-		req, err = http.NewRequestWithContext(context.Background(), method, url, &buf)
+		req, err = http.NewRequestWithContext(context.Background(), method, requestURL, &buf)
 		if err != nil {
 			return err
 		}
@@ -170,7 +172,7 @@ func (s *syncer) queryStruct(server string, method string, path string, data int
 		}
 	} else {
 		// No data to be sent along with the request
-		req, err = http.NewRequestWithContext(context.Background(), method, url, nil)
+		req, err = http.NewRequestWithContext(context.Background(), method, requestURL, nil)
 		if err != nil {
 			return err
 		}
@@ -204,7 +206,7 @@ func (s *syncer) queryStruct(server string, method string, path string, data int
 			return fmt.Errorf("%s", strings.TrimSpace(string(content)))
 		}
 
-		return fmt.Errorf("%s: %s", url, resp.Status)
+		return fmt.Errorf("%s: %s", requestURL, resp.Status)
 	}
 
 	// Decode the response

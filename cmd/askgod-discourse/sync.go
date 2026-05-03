@@ -114,11 +114,19 @@ type postAPI struct {
 	Key  string `yaml:"key"`
 }
 
+type postContext struct {
+	posts        map[string]post
+	dbTeams      []dbTeam
+	dbTeamPosts  map[int64]map[string][]int64
+	askgodScores map[int64]int64
+	askgodFlags  map[string][]int64
+}
+
 func (s *syncer) syncPosts() error {
 	s.postsLock.Lock()
 	defer s.postsLock.Unlock()
 
-	posts := map[string]post{}
+	pctx := postContext{}
 
 	// Get the submitted flags
 	askgodFlags, err := s.askgodGetTeamDiscourseFlags()
@@ -126,11 +134,15 @@ func (s *syncer) syncPosts() error {
 		return err
 	}
 
+	pctx.askgodFlags = askgodFlags
+
 	// Get the current scores
 	askgodScores, err := s.askgodGetTeamScores()
 	if err != nil {
 		return err
 	}
+
+	pctx.askgodScores = askgodScores
 
 	// Get all the posts
 	dbTeamPosts, err := s.dbGetTeamPosts()
@@ -138,225 +150,269 @@ func (s *syncer) syncPosts() error {
 		return err
 	}
 
+	pctx.dbTeamPosts = dbTeamPosts
+
 	// Get all the teams from the database
 	dbTeams, err := s.dbGetTeams()
 	if err != nil {
 		return err
 	}
 
-	// Enumerate the posts directory
-	files, err := os.ReadDir(s.config.Posts)
+	pctx.dbTeams = dbTeams
+
+	// Load the posts directory
+	posts, err := loadPosts(s.config.Posts)
 	if err != nil {
 		return err
 	}
 
-	// Parse the individual yaml files
-	for _, file := range files {
-		if !strings.HasSuffix(file.Name(), ".yaml") {
-			continue
-		}
-
-		// Get the full path
-		path := filepath.Join(s.config.Posts, file.Name())
-
-		// Read the file
-		content, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-
-		// Parse the content
-		newPost := post{}
-		err = yaml.Unmarshal(content, &newPost)
-		if err != nil {
-			return fmt.Errorf("failed to parse '%s': %w", path, err)
-		}
-
-		// Convert timestamps
-		if newPost.Trigger != nil {
-			if newPost.Trigger.After != "" {
-				ts, err := time.ParseInLocation("2006/01/02 15:04", newPost.Trigger.After, time.Local)
-				if err != nil {
-					return err
-				}
-
-				newPost.Trigger.AfterTime = ts
-			}
-		}
-
-		// Add the post to the map
-		name := strings.TrimSuffix(file.Name(), ".yaml")
-		posts[name] = newPost
-	}
-
-	// Processing of post entries
-	processEntry := func(postType string) error {
-		for name, post := range posts {
-			teams := []dbTeam{}
-
-			// Sort out API keys
-			apiUser := s.config.DiscourseAPIUser
-			apiKey := s.config.DiscourseAPIKey
-			if post.API != nil {
-				apiUser = post.API.User
-				apiKey = post.API.Key
-			}
-
-			// Only process the type we've been asked for
-			if post.Type != postType {
-				continue
-			}
-
-			// Validate the trigger
-			if post.Trigger != nil {
-				switch post.Trigger.Type {
-				case "timer":
-					if post.Trigger.AfterTime.Unix() > time.Now().Unix() {
-						// Not time yet
-						continue
-					}
-
-					// If it's time, send to everyone
-					teams = dbTeams
-				case "flag":
-					for _, team := range dbTeams {
-						if post.Trigger.Tag == "" {
-							if askgodScores[team.AskgodID] == 0 {
-								// Hasn't sent a flag yet
-								continue
-							}
-						} else {
-							if !int64InSlice(team.AskgodID, askgodFlags[post.Trigger.Tag]) {
-								// Not scored that yet
-								continue
-							}
-						}
-						teams = append(teams, team)
-					}
-				case "score":
-					for _, team := range dbTeams {
-						if askgodScores[team.AskgodID] < post.Trigger.Value {
-							// Not there yet
-							continue
-						}
-
-						teams = append(teams, team)
-					}
-				}
-			} else {
-				// Everyone is getting the post
-				teams = dbTeams
-			}
-
-			// Post to affected teams
-			for _, team := range teams {
-				if len(s.config.PublishRestricted) > 0 && !stringInSlice(team.DiscourseName, s.config.PublishRestricted) {
-					continue
-				}
-
-				_, ok := dbTeamPosts[team.AskgodID][name]
-				if ok {
-					// Already posted for this team, skip
-					continue
-				}
-
-				// Apply templating
-				if team.AskgodName == "" {
-					team.AskgodName = team.DiscourseName
-				}
-
-				body := post.Body
-				body = strings.ReplaceAll(body, "%{team_name}", team.AskgodName)
-				body = strings.ReplaceAll(body, "%{team_score}", strconv.FormatInt(askgodScores[team.AskgodID], 10))
-
-				// Process template variables
-				r := regexp.MustCompile(`%\{(\w+)\}`)
-				body = r.ReplaceAllStringFunc(body, func(p string) string {
-					return post.Variables[p[2:len(p)-1]][team.AskgodID]
-				})
-
-				switch post.Type {
-				case "topic":
-					err := s.discourseCreateTopic(team.DiscourseName, team.AskgodID, apiUser, apiKey, name, team.DiscourseCategoryID, post.Title, body)
-					if err != nil {
-						return err
-					}
-				case "post":
-					postIDs := dbTeamPosts[team.AskgodID][post.Topic]
-					for _, id := range postIDs {
-						err := s.discourseCreatePost(team.DiscourseName, team.AskgodID, apiUser, apiKey, name, id, body)
-						if err != nil {
-							return err
-						}
-					}
-				case "posts":
-					postIDs := dbTeamPosts[team.AskgodID][post.Topic]
-					for _, subPost := range post.Posts {
-						subApiUser := apiUser
-						subApiKey := apiKey
-						if subPost.API != nil {
-							subApiUser = subPost.API.User
-							subApiKey = subPost.API.Key
-						}
-
-						for _, id := range postIDs {
-							err := s.discourseCreatePost(team.DiscourseName, team.AskgodID, subApiUser, subApiKey, name, id, subPost.Body)
-							if err != nil {
-								return err
-							}
-						}
-					}
-				default:
-					return fmt.Errorf("invalid type: %s", post.Type)
-				}
-			}
-		}
-
-		return nil
-	}
+	pctx.posts = posts
 
 	// Process all topics first
-	err = processEntry("topic")
+	err = s.processPostEntries("topic", &pctx)
 	if err != nil {
 		return err
 	}
 
 	// Delete removed posts
+	err = s.cleanupRemovedPosts(pctx.dbTeamPosts)
+	if err != nil {
+		return err
+	}
+
+	// Refresh the list of posts
+	pctx.dbTeamPosts, err = s.dbGetTeamPosts()
+	if err != nil {
+		return err
+	}
+
+	// Then the posts
+	err = s.processPostEntries("post", &pctx)
+	if err != nil {
+		return err
+	}
+
+	// Then the posts
+	err = s.processPostEntries("posts", &pctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func loadPosts(dir string) (map[string]post, error) {
+	posts := map[string]post{}
+
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, file := range files {
+		if !strings.HasSuffix(file.Name(), ".yaml") {
+			continue
+		}
+
+		path := filepath.Join(dir, file.Name())
+
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+
+		newPost := post{}
+		err = yaml.Unmarshal(content, &newPost)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse '%s': %w", path, err)
+		}
+
+		// Convert timestamps
+		if newPost.Trigger != nil && newPost.Trigger.After != "" {
+			ts, err := time.ParseInLocation("2006/01/02 15:04", newPost.Trigger.After, time.Local)
+			if err != nil {
+				return nil, err
+			}
+
+			newPost.Trigger.AfterTime = ts
+		}
+
+		name := strings.TrimSuffix(file.Name(), ".yaml")
+		posts[name] = newPost
+	}
+
+	return posts, nil
+}
+
+func (s *syncer) cleanupRemovedPosts(dbTeamPosts map[int64]map[string][]int64) error {
 	for _, entry := range dbTeamPosts {
 		for name, postids := range entry {
 			_, err := os.Lstat(filepath.Join(s.config.Posts, name+".yaml"))
-			if err != nil && os.IsNotExist(err) {
-				for _, postid := range postids {
-					err = s.discourseDeleteTopic(postid)
-					if err != nil {
-						return err
-					}
+			if err == nil || !os.IsNotExist(err) {
+				continue
+			}
 
-					err = s.dbDeletePost(postid)
-					if err != nil {
-						return err
-					}
+			for _, postid := range postids {
+				err = s.discourseDeleteTopic(postid)
+				if err != nil {
+					return err
+				}
+
+				err = s.dbDeletePost(postid)
+				if err != nil {
+					return err
 				}
 			}
 		}
 	}
 
-	// Refresh the list of posts
-	dbTeamPosts, err = s.dbGetTeamPosts()
-	if err != nil {
-		return err
+	return nil
+}
+
+func selectTriggerTeams(p post, pctx *postContext) ([]dbTeam, error) {
+	if p.Trigger == nil {
+		return pctx.dbTeams, nil
 	}
 
-	// Then the posts
-	err = processEntry("post")
-	if err != nil {
-		return err
+	teams := []dbTeam{}
+
+	switch p.Trigger.Type {
+	case "timer":
+		if p.Trigger.AfterTime.Unix() > time.Now().Unix() {
+			return teams, nil
+		}
+
+		return pctx.dbTeams, nil
+	case "flag":
+		for _, team := range pctx.dbTeams {
+			if p.Trigger.Tag == "" {
+				if pctx.askgodScores[team.AskgodID] == 0 {
+					continue
+				}
+			} else if !int64InSlice(team.AskgodID, pctx.askgodFlags[p.Trigger.Tag]) {
+				continue
+			}
+
+			teams = append(teams, team)
+		}
+	case "score":
+		for _, team := range pctx.dbTeams {
+			if pctx.askgodScores[team.AskgodID] < p.Trigger.Value {
+				continue
+			}
+
+			teams = append(teams, team)
+		}
+	default:
+		return nil, fmt.Errorf("unknown trigger type: %s", p.Trigger.Type)
 	}
 
-	// Then the posts
-	err = processEntry("posts")
-	if err != nil {
-		return err
+	return teams, nil
+}
+
+func (s *syncer) processPostEntries(postType string, pctx *postContext) error {
+	for name, p := range pctx.posts {
+		if p.Type != postType {
+			continue
+		}
+
+		// Sort out API keys
+		apiUser := s.config.DiscourseAPIUser
+		apiKey := s.config.DiscourseAPIKey
+		if p.API != nil {
+			apiUser = p.API.User
+			apiKey = p.API.Key
+		}
+
+		teams, err := selectTriggerTeams(p, pctx)
+		if err != nil {
+			return err
+		}
+
+		err = s.publishPostToTeams(name, p, teams, apiUser, apiKey, pctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *syncer) publishPostToTeams(name string, p post, teams []dbTeam, apiUser string, apiKey string, pctx *postContext) error {
+	for _, team := range teams {
+		if len(s.config.PublishRestricted) > 0 && !stringInSlice(team.DiscourseName, s.config.PublishRestricted) {
+			continue
+		}
+
+		_, ok := pctx.dbTeamPosts[team.AskgodID][name]
+		if ok {
+			// Already posted for this team, skip
+			continue
+		}
+
+		if team.AskgodName == "" {
+			team.AskgodName = team.DiscourseName
+		}
+
+		body := renderPostBody(p, team, pctx.askgodScores)
+
+		err := s.dispatchPost(name, p, team, body, apiUser, apiKey, pctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func renderPostBody(p post, team dbTeam, askgodScores map[int64]int64) string {
+	body := p.Body
+	body = strings.ReplaceAll(body, "%{team_name}", team.AskgodName)
+	body = strings.ReplaceAll(body, "%{team_score}", strconv.FormatInt(askgodScores[team.AskgodID], 10))
+
+	r := regexp.MustCompile(`%\{(\w+)\}`)
+
+	return r.ReplaceAllStringFunc(body, func(p2 string) string {
+		return p.Variables[p2[2:len(p2)-1]][team.AskgodID]
+	})
+}
+
+func (s *syncer) dispatchPost(name string, p post, team dbTeam, body string, apiUser string, apiKey string, pctx *postContext) error {
+	switch p.Type {
+	case "topic":
+		return s.discourseCreateTopic(team.DiscourseName, team.AskgodID, apiUser, apiKey, name, team.DiscourseCategoryID, p.Title, body)
+	case "post":
+		for _, id := range pctx.dbTeamPosts[team.AskgodID][p.Topic] {
+			err := s.discourseCreatePost(team.DiscourseName, team.AskgodID, apiUser, apiKey, name, id, body)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	case "posts":
+		return s.dispatchSubPosts(name, p, team, apiUser, apiKey, pctx)
+	default:
+		return fmt.Errorf("invalid type: %s", p.Type)
+	}
+}
+
+func (s *syncer) dispatchSubPosts(name string, p post, team dbTeam, apiUser string, apiKey string, pctx *postContext) error {
+	postIDs := pctx.dbTeamPosts[team.AskgodID][p.Topic]
+	for _, subPost := range p.Posts {
+		subAPIUser := apiUser
+		subAPIKey := apiKey
+		if subPost.API != nil {
+			subAPIUser = subPost.API.User
+			subAPIKey = subPost.API.Key
+		}
+
+		for _, id := range postIDs {
+			err := s.discourseCreatePost(team.DiscourseName, team.AskgodID, subAPIUser, subAPIKey, name, id, subPost.Body)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil

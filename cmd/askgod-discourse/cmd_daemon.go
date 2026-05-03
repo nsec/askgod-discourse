@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/urfave/cli/v2"
 )
@@ -13,7 +13,7 @@ func cmdDaemon(ctx *cli.Context) error {
 			return err
 		}
 
-		return fmt.Errorf("Missing required arguments")
+		return errors.New("missing required arguments")
 	}
 
 	// Load configuration

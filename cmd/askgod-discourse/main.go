@@ -1,3 +1,5 @@
+// Package main implements askgod-discourse, a daemon that mirrors askgod
+// teams, scores and event triggers into a Discourse forum.
 package main
 
 import (

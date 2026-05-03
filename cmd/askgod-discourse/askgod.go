@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -109,5 +110,5 @@ func (s *syncer) askgodTeamForIP(ipStr string) (*api.AdminTeam, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("No team matches the subnet")
+	return nil, errors.New("no team matches the subnet")
 }

@@ -94,13 +94,18 @@ func (s *syncer) discourseCreateGroup(name string, fullName string) (int64, erro
 		PrimaryGroup: "true",
 	}
 
-	var resp interface{}
+	var resp struct {
+		BasicGroup struct {
+			ID int64 `json:"id"`
+		} `json:"basic_group"`
+	}
+
 	err := s.queryStruct("discourse", "POST", "/admin/groups/", group, &resp, nil)
 	if err != nil {
 		return -1, err
 	}
 
-	return int64(resp.(map[string]interface{})["basic_group"].(map[string]interface{})["id"].(float64)), nil
+	return resp.BasicGroup.ID, nil
 }
 
 func (s *syncer) discourseDeleteGroup(id int64) error {
@@ -150,16 +155,21 @@ func (s *syncer) discourseCreateCategory(name string, groups []string) (int64, e
 	}
 	category.Permissions = permissions
 
-	var resp interface{}
+	var resp struct {
+		Category struct {
+			ID int64 `json:"id"`
+		} `json:"category"`
+	}
+
 	err := s.queryStruct("discourse", "POST", "/categories", category, &resp, nil)
 	if err != nil {
 		return -1, err
 	}
 
-	return int64(resp.(map[string]interface{})["category"].(map[string]interface{})["id"].(float64)), nil
+	return resp.Category.ID, nil
 }
 
-func (s *syncer) discourseDeleteCategory(id int64, name string) error {
+func (s *syncer) discourseDeleteCategory(id int64, _ string) error {
 	topics, err := s.discourseGetTopics(id)
 	if err != nil {
 		return err
@@ -182,23 +192,29 @@ func (s *syncer) discourseDeleteCategory(id int64, name string) error {
 
 // Topics.
 func (s *syncer) discourseGetTopics(id int64) ([]int64, error) {
-	var resp interface{}
+	var resp struct {
+		TopicList struct {
+			Topics []struct {
+				ID int64 `json:"id"`
+			} `json:"topics"`
+		} `json:"topic_list"`
+	}
+
 	err := s.queryStruct("discourse", "GET", fmt.Sprintf("/c/%d.json", id), nil, &resp, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	// Parse the response
-	topics := []int64{}
-	for _, entry := range resp.(map[string]interface{})["topic_list"].(map[string]interface{})["topics"].([]interface{}) {
-		topics = append(topics, int64(entry.(map[string]interface{})["id"].(float64)))
+	topics := make([]int64, 0, len(resp.TopicList.Topics))
+	for _, entry := range resp.TopicList.Topics {
+		topics = append(topics, entry.ID)
 	}
 
 	return topics, nil
 }
 
 func (s *syncer) discourseCreateTopicAs(category int64, title string, body string, apiUser string, apiKey string) (int64, error) {
-	post := map[string]interface{}{
+	post := map[string]any{
 		"category": category,
 		"title":    title,
 		"raw":      body,
@@ -208,7 +224,9 @@ func (s *syncer) discourseCreateTopicAs(category int64, title string, body strin
 		apiKey = s.config.DiscourseAPIKey
 	}
 
-	var resp interface{}
+	var resp struct {
+		TopicID int64 `json:"topic_id"`
+	}
 
 	args := queryArgs{
 		discourseUser: apiUser,
@@ -220,7 +238,7 @@ func (s *syncer) discourseCreateTopicAs(category int64, title string, body strin
 		return -1, err
 	}
 
-	return int64(resp.(map[string]interface{})["topic_id"].(float64)), nil
+	return resp.TopicID, nil
 }
 
 func (s *syncer) discourseDeleteTopic(id int64) error {
@@ -238,7 +256,7 @@ func (s *syncer) discourseDeleteTopic(id int64) error {
 
 // Posts.
 func (s *syncer) discourseCreatePostAs(topic int64, body string, apiUser string, apiKey string) (int64, error) {
-	post := map[string]interface{}{
+	post := map[string]any{
 		"topic_id": topic,
 		"raw":      body,
 	}
@@ -247,7 +265,10 @@ func (s *syncer) discourseCreatePostAs(topic int64, body string, apiUser string,
 		apiKey = s.config.DiscourseAPIKey
 	}
 
-	var resp interface{}
+	var resp struct {
+		ID int64 `json:"id"`
+	}
+
 	args := queryArgs{
 		discourseUser: apiUser,
 		discourseKey:  apiKey,
@@ -258,7 +279,7 @@ func (s *syncer) discourseCreatePostAs(topic int64, body string, apiUser string,
 		return -1, err
 	}
 
-	return int64(resp.(map[string]interface{})["id"].(float64)), nil
+	return resp.ID, nil
 }
 
 // User setup.
@@ -415,7 +436,6 @@ func (s *syncer) discourseCreateTopic(name string, id int64, apiUser string, api
 
 	s.logger.Info("New topic", log15.Ctx{"team": name, "name": postName, "id": topicID})
 	return nil
-
 }
 
 func (s *syncer) discourseCreatePost(name string, id int64, apiUser string, apiKey string, postName string, postID int64, postBody string) error {
