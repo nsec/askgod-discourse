@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -267,7 +268,7 @@ func (s *syncer) syncPosts() error {
 
 				body := post.Body
 				body = strings.ReplaceAll(body, "%{team_name}", team.AskgodName)
-				body = strings.ReplaceAll(body, "%{team_score}", fmt.Sprintf("%d", askgodScores[team.AskgodID]))
+				body = strings.ReplaceAll(body, "%{team_score}", strconv.FormatInt(askgodScores[team.AskgodID], 10))
 
 				// Process template variables
 				r := regexp.MustCompile(`%\{(\w+)\}`)
@@ -323,7 +324,7 @@ func (s *syncer) syncPosts() error {
 	// Delete removed posts
 	for _, entry := range dbTeamPosts {
 		for name, postids := range entry {
-			_, err := os.Lstat(filepath.Join(s.config.Posts, fmt.Sprintf("%s.yaml", name)))
+			_, err := os.Lstat(filepath.Join(s.config.Posts, name+".yaml"))
 			if err != nil && os.IsNotExist(err) {
 				for _, postid := range postids {
 					err = s.discourseDeleteTopic(postid)

@@ -86,9 +86,9 @@ func (s *syncer) websocket(server string, path string) (*websocket.Conn, error) 
 
 	rest, ok := strings.CutPrefix(url, "https://")
 	if ok {
-		url = fmt.Sprintf("wss://%s", rest)
+		url = "wss://" + rest
 	} else {
-		url = fmt.Sprintf("ws://%s", strings.TrimPrefix(url, "http://"))
+		url = "ws://" + strings.TrimPrefix(url, "http://")
 	}
 
 	// Grab the http transport handler
