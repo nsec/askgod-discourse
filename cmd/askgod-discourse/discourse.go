@@ -3,9 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
-
 	"github.com/inconshreveable/log15"
+	"github.com/pkg/errors"
 )
 
 // Structs.
