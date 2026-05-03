@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/nsec/askgod/api"
-	"gopkg.in/yaml.v2"
+	"go.yaml.in/yaml/v4"
 )
 
 func (s *syncer) syncTeams() error {
