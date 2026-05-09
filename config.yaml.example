@@ -1,13 +1,21 @@
 database: state.db
 posts: posts/
 
-askgod_url:
-askgod_cert:
+askgod_url: https://askgod.nsec
+askgod_cert: |
+  -----BEGIN CERTIFICATE-----
+  ...
+  -----END CERTIFICATE-----
+
 
 discourse_url:
+# API key: https://<discourse_url>/admin/api/keys
 discourse_api_user:
-discourse_api_key:
-discourse_cert:
+discourse_api_key: 
+discourse_cert: |
+  -----BEGIN CERTIFICATE-----
+  ...
+  -----END CERTIFICATE-----
 
 category_access:
  - admins
